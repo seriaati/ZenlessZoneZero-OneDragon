@@ -1,3 +1,4 @@
+import sys
 import threading
 from collections.abc import Callable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -10,6 +11,8 @@ T = TypeVar("T")
 _THREAD_PREFIX = "od_gpu"
 _DML_PROVIDER = "DmlExecutionProvider"
 _executor_local = threading.local()
+_cuda_dlls_lock = threading.Lock()
+_cuda_dlls_preloaded: bool = False
 
 
 def _mark_executor_thread() -> None:
@@ -38,6 +41,28 @@ def run_sync(fn: Callable[..., T], /, *args, **kwargs) -> T:
     if is_executor_thread():
         return fn(*args, **kwargs)
     return submit(fn, *args, **kwargs).result()
+
+
+def preload_cuda_dlls() -> None:
+    """
+    预加载 CUDA / cuDNN 动态库 在创建 CUDA 会话前调用 只会加载一次
+
+    Linux 下 onnxruntime-gpu 用的 CUDA / cuDNN 来自 pip 的 nvidia-* 包 不在系统库搜索路径里
+    不预加载的话 CUDAExecutionProvider 会加载失败 (缺 libcublasLt.so.12 等) 并回退到 CPU。
+    Windows 下不需要。
+    """
+    global _cuda_dlls_preloaded
+    if sys.platform != 'linux':
+        return
+    with _cuda_dlls_lock:
+        if _cuda_dlls_preloaded:
+            return
+        _cuda_dlls_preloaded = True
+        try:
+            import onnxruntime
+            onnxruntime.preload_dlls()
+        except Exception:
+            log.warning('预加载CUDA动态库失败 CUDA不可用时会回退到CPU', exc_info=True)
 
 
 def should_serialize_providers(providers: Sequence[str] | None) -> bool:

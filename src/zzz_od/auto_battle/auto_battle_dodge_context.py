@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import threading
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -82,22 +83,28 @@ class AudioRecorder:
         import warnings
 
         import soundcard as sc
-        from soundcard.mediafoundation import SoundcardRuntimeWarning
 
-        warnings.filterwarnings('ignore', category=SoundcardRuntimeWarning)
+        if sys.platform == 'win32':
+            from soundcard.mediafoundation import SoundcardRuntimeWarning
+
+            warnings.filterwarnings('ignore', category=SoundcardRuntimeWarning)
 
         try:
             # 按 WASAPI id 精确匹配默认扬声器的 loopback 设备（录制系统输出声音）。
             # 不能用名字匹配（soundcard 的 _match_device 会做子串/模糊匹配，可能错落到真实麦克风）
+            # Linux (PulseAudio/PipeWire) 下 loopback 设备是默认输出设备的 monitor，id 为 `<扬声器id>.monitor`
             default_speaker = sc.default_speaker()
+            loopback_id = default_speaker.id if sys.platform == 'win32' else f'{default_speaker.id}.monitor'
             _mic = None
             for mic in sc.all_microphones(include_loopback=True):
-                if mic.isloopback and mic.id == default_speaker.id:
+                if mic.isloopback and mic.id == loopback_id:
                     _mic = mic
                     break
             if _mic is None:
                 raise RuntimeError(f'未找到默认扬声器 [{default_speaker.name}] 的 loopback 设备')
-            _recorder = _mic.recorder(samplerate=self._sample_rate, channels=self._used_channel)
+            # Linux (PulseAudio) 下不指定 blocksize 时 服务端按默认分片约 2 秒才送来一次数据 声音闪避会严重滞后
+            blocksize = None if sys.platform == 'win32' else self._chunk_size
+            _recorder = _mic.recorder(samplerate=self._sample_rate, channels=self._used_channel, blocksize=blocksize)
             with _recorder as audio_recorder:
                 while self.running:
                     stream_data = audio_recorder.record(numframes=self._chunk_size)

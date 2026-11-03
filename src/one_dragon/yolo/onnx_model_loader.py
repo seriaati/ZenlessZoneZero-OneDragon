@@ -131,6 +131,7 @@ class OnnxModelLoader:
         if self.gpu:
             if 'CUDAExecutionProvider' in availables:
                 providers = ['CUDAExecutionProvider']
+                gpu_executor.preload_cuda_dlls()
             elif 'DmlExecutionProvider' in availables:
                 providers = ['DmlExecutionProvider']
             else:

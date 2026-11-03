@@ -6,6 +6,7 @@ from typing import Any
 
 import onnxruntime
 
+from one_dragon.utils import gpu_executor
 from onnxocr.logger import get_logger
 
 log = get_logger("inference_engine")
@@ -28,7 +29,9 @@ class EP(Enum):
 
 DEFAULT_CPU_EP_CFG: dict[str, Any] = {}
 DEFAULT_CUDA_EP_CFG: dict[str, Any] = {
-    "cudnn_conv_algo_search": "DEFAULT",
+    # DEFAULT 在 cuDNN 9 下卷积会走 Fallback 模式 比 CPU 还慢 (1080p 检测约 200ms)
+    # HEURISTIC 按启发式选算法 实测 1080p 检测约 48ms 且新尺寸的首次开销小
+    "cudnn_conv_algo_search": "HEURISTIC",
     "device_id": 0,
 }
 DEFAULT_DML_EP_CFG: dict[str, Any] = {}
@@ -58,6 +61,7 @@ def build_providers(
     if use_gpu:
         available = get_available_providers()
         if EP.CUDA.value in available:
+            gpu_executor.preload_cuda_dlls()
             cuda_cfg = dict(DEFAULT_CUDA_EP_CFG)
             cuda_cfg["device_id"] = gpu_id
             return [(EP.CUDA.value, cuda_cfg), EP.CPU.value]
@@ -80,6 +84,7 @@ def build_providers_from_engine_cfg(engine_cfg: Any) -> list[Provider]:
     providers: list[Provider] = [(EP.CPU.value, _cfg_dict(engine_cfg, "cpu_ep_cfg", DEFAULT_CPU_EP_CFG))]
 
     if _cfg_bool(engine_cfg, "use_cuda") and EP.CUDA.value in available:
+        gpu_executor.preload_cuda_dlls()
         providers.insert(0, (EP.CUDA.value, _cfg_dict(engine_cfg, "cuda_ep_cfg", DEFAULT_CUDA_EP_CFG)))
 
     if _cfg_bool(engine_cfg, "use_dml") and _is_windows() and EP.DIRECTML.value in available:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 from one_dragon.base.controller.pc_button import pc_button_utils
@@ -14,6 +15,11 @@ def apply_battle_assistant_input_mode(ctx: ZContext) -> tuple[bool, str]:
     config = ctx.battle_assistant_config
 
     if config.background_mode:
+        if sys.platform != 'win32':
+            # Linux 下 XTest 键鼠只发到 gamescope 本身就是后台的 不需要虚拟手柄
+            ctx.controller.enable_background_mode()
+            return True, '后台模式-键鼠'
+
         gamepad_type = ctx.game_config.background_gamepad_type
 
         if not pc_button_utils.is_vgamepad_installed():
