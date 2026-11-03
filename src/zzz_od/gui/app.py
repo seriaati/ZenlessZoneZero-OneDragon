@@ -91,7 +91,8 @@ try:
             self._launch_timer.timeout.connect(self._after_app_launch)
             self._launch_timer.start(2000)  # 2秒后发送，确保UI完全渲染
 
-            self.overlay_manager = OverlayManager.create(self.ctx, parent=self)
+            # 悬浮窗依赖 Win32 窗口 API，非 Windows 不创建
+            self.overlay_manager = OverlayManager.create(self.ctx, parent=self) if sys.platform == 'win32' else None
             if self.overlay_manager is not None:
                 self.overlay_manager.start()
 
@@ -296,6 +297,10 @@ def main() -> None:
     if _init_error is not None:
         # 显示错误弹窗，询问用户是否打开排障文档
         error_message = f"启动一条龙失败,报错信息如下:\n{stack_trace}\n\n是否打开排障文档查看解决方案?"
+        if sys.platform != 'win32':
+            # 非 Windows 没有 MessageBoxW，直接输出到终端
+            print(error_message, file=sys.stderr)
+            sys.exit(1)
         # MB_ICONERROR | MB_OKCANCEL = 0x10 | 0x01 = 0x11
         # 返回值: IDOK = 1, IDCANCEL = 2
         result = ctypes.windll.user32.MessageBoxW(0, error_message, "错误", 0x11)

@@ -26,22 +26,24 @@ WDA_NONE = 0x0
 WDA_EXCLUDEFROMCAPTURE = 0x11
 
 
-_user32 = ctypes.windll.user32
+# 非 Windows 平台仅保证模块可导入（悬浮窗不会启动）
+if sys.platform == 'win32':
+    _user32 = ctypes.windll.user32
 
-_user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
-_user32.GetWindowLongW.restype = ctypes.c_long
-_user32.SetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_long]
-_user32.SetWindowLongW.restype = ctypes.c_long
-_user32.SetWindowDisplayAffinity.argtypes = [wintypes.HWND, wintypes.DWORD]
-_user32.SetWindowDisplayAffinity.restype = wintypes.BOOL
-_user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
-_user32.GetAsyncKeyState.restype = ctypes.c_short
-_user32.IsIconic.argtypes = [wintypes.HWND]
-_user32.IsIconic.restype = wintypes.BOOL
-_user32.IsWindowVisible.argtypes = [wintypes.HWND]
-_user32.IsWindowVisible.restype = wintypes.BOOL
-_user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
-_user32.GetAncestor.restype = wintypes.HWND
+    _user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
+    _user32.GetWindowLongW.restype = ctypes.c_long
+    _user32.SetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_long]
+    _user32.SetWindowLongW.restype = ctypes.c_long
+    _user32.SetWindowDisplayAffinity.argtypes = [wintypes.HWND, wintypes.DWORD]
+    _user32.SetWindowDisplayAffinity.restype = wintypes.BOOL
+    _user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
+    _user32.GetAsyncKeyState.restype = ctypes.c_short
+    _user32.IsIconic.argtypes = [wintypes.HWND]
+    _user32.IsIconic.restype = wintypes.BOOL
+    _user32.IsWindowVisible.argtypes = [wintypes.HWND]
+    _user32.IsWindowVisible.restype = wintypes.BOOL
+    _user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+    _user32.GetAncestor.restype = wintypes.HWND
 
 
 class WINDOWPLACEMENT(ctypes.Structure):
@@ -55,8 +57,9 @@ class WINDOWPLACEMENT(ctypes.Structure):
     ]
 
 
-_user32.GetWindowPlacement.argtypes = [wintypes.HWND, ctypes.POINTER(WINDOWPLACEMENT)]
-_user32.GetWindowPlacement.restype = wintypes.BOOL
+if sys.platform == 'win32':
+    _user32.GetWindowPlacement.argtypes = [wintypes.HWND, ctypes.POINTER(WINDOWPLACEMENT)]
+    _user32.GetWindowPlacement.restype = wintypes.BOOL
 
 _shcore = None
 try:
