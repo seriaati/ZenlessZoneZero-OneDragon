@@ -45,7 +45,11 @@ uv sync --group dev
 PYTHONPATH=src uv run src/zzz_od/gui/app.py
 ```
 
+- 上面的命令要在仓库根目录执行（脚本路径是相对路径）。
 - 项目根目录没有 `.env` 文件时，不要加 `--env-file .env`。
+- 也可以用启动脚本 `deploy/linux/zzz-od`：它会自己切到仓库根目录并设置 `PYTHONPATH`，从任何目录、或从应用菜单启动都可以。
+  - 终端：`ln -s "$PWD/deploy/linux/zzz-od" ~/bin/zzz-od`（`~/bin` 需要在 `PATH` 里），之后直接运行 `zzz-od`。
+  - 应用菜单：在 `~/.local/share/applications/` 新建 `.desktop` 文件，`Exec=` 写这个脚本（或上面软链接）的绝对路径。图标可以用 `assets/ui/logo.ico` 转成的 png。
 - 一条龙会通过 `flatpak run moe.launcher.sleepy-launcher --just-run-game` 自动启动游戏，并等待最多约 3 分钟，直到找到游戏窗口。游戏已经在运行时不会重复启动。
   - `--just-run-game` 与 `--run-game` 相同，区别是只有预下载可用时也会直接启动游戏。游戏需要真正更新时，Sleepy Launcher 会打开自己的窗口，需要手动处理。
   - 启动前会去掉 `SSL_CERT_FILE`、`SSL_CERT_DIR` 和 `NoDefaultCurrentDirectoryInExePath` 这几个环境变量。flatpak 会把环境变量带进沙盒：前两个指向宿主机的证书路径，沙盒里没有，Sleepy Launcher 读不到证书会直接崩溃；第三个是 Windows 变量，Wine 也认，设置后找不到游戏 exe。

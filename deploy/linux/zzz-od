@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Linux 下启动绝区零一条龙 GUI。
+# 可以软链接到 PATH 里的目录（例如 ~/bin/zzz-od）在终端运行，也可以给应用菜单的 .desktop 文件调用。
+# 会先切到仓库根目录并设置好 PYTHONPATH，所以从任何目录启动都可以。
+set -euo pipefail
+
+# 通过软链接调用时 先解析出脚本真实位置 再找到仓库根目录
+repo_dir="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+cd "$repo_dir"
+
+# 从应用菜单启动时 PATH 里可能没有 uv 所在的目录
+export PATH="$HOME/.local/bin:$PATH"
+export PYTHONPATH=src
+
+exec uv run src/zzz_od/gui/app.py "$@"
