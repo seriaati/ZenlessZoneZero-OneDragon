@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 
@@ -14,8 +15,18 @@ class PcButtonListener:
                  listen_mouse: bool = False,
                  listen_gamepad: bool = False,
                  ):
-        self.keyboard_listener = keyboard.Listener(on_press=self._on_keyboard_press)
-        self.mouse_listener = mouse.Listener(on_click=self._on_mouse_click)
+        if sys.platform == 'win32':
+            self.keyboard_listener = keyboard.Listener(on_press=self._on_keyboard_press)
+            self.mouse_listener = mouse.Listener(on_click=self._on_mouse_click)
+        else:
+            # Wayland 下 pynput 收不到全局按键 改为直接读取 /dev/input 的键盘鼠标
+            from one_dragon.base.controller.pc_button.evdev_button_listener import (
+                EvdevButtonListener,
+            )
+            self.keyboard_listener = EvdevButtonListener(on_key_press=self._call_button_tap_callback)
+            self.mouse_listener = EvdevButtonListener(
+                on_mouse_press=lambda name: self._call_button_tap_callback(f'mouse_{name}')
+            )
         self.gamepad_listener = None
 
         self.on_button_tap: Callable[[str], None] = on_button_tap

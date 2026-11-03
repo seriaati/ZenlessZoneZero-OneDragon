@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sys
+from typing import TYPE_CHECKING
+
 from pynput import keyboard
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QKeyEvent
@@ -14,6 +17,11 @@ from qfluentwidgets import (
 
 from one_dragon.utils.i18_utils import gt
 from zzz_od.gui.view.devtools.agent_template_widgets import ShortcutButton
+
+if TYPE_CHECKING:
+    from one_dragon.base.controller.pc_button.evdev_button_listener import (
+        EvdevKeyboardListener,
+    )
 
 MODIFIER_ORDER: tuple[str, ...] = ('ctrl', 'alt', 'shift', 'win')
 
@@ -83,7 +91,7 @@ class HotkeyListener(QObject):
         self.recording: bool = False
         self._modifiers: set[str] = set()
         self._pressed: set[str] = set()
-        self._listener: keyboard.Listener | None = None
+        self._listener: keyboard.Listener | EvdevKeyboardListener | None = None
 
     @property
     def is_running(self) -> bool:
@@ -94,7 +102,14 @@ class HotkeyListener(QObject):
             return
         self._modifiers.clear()
         self._pressed.clear()
-        self._listener = keyboard.Listener(on_press=self._on_press, on_release=self._on_release)
+        if sys.platform == 'win32':
+            self._listener = keyboard.Listener(on_press=self._on_press, on_release=self._on_release)
+        else:
+            # Wayland 下 pynput 收不到全局按键 改为直接读取 /dev/input 的键盘
+            from one_dragon.base.controller.pc_button.evdev_button_listener import (
+                EvdevKeyboardListener,
+            )
+            self._listener = EvdevKeyboardListener(on_press=self._on_press, on_release=self._on_release)
         self._listener.start()
 
     def stop(self) -> None:
