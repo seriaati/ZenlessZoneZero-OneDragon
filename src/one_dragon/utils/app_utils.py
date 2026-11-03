@@ -12,6 +12,17 @@ ANSI_ESCAPE_PATTERN = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 
 def start_one_dragon(restart: bool) -> None:
     """启动独立的一条龙进程，重启时在创建进程成功后退出当前程序。"""
+    if sys.platform != 'win32':
+        # 非 Windows 只支持源码运行 没有启动器 exe：用当前 Python 重新运行当前脚本
+        main_file = sys.modules['__main__'].__file__
+        subprocess.Popen(
+            [sys.executable, main_file, *sys.argv[1:]],
+            cwd=os_utils.get_work_dir(),
+            start_new_session=True,
+        )
+        if restart:
+            sys.exit(0)
+        return
     if getattr(sys, 'frozen', False):
         launcher_path = Path(sys.executable)
     else:

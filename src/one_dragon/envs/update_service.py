@@ -77,6 +77,8 @@ class UpdateService:
 
     def is_launcher_update_available(self) -> bool:
         """检查当前启动器通道是否存在可用更新。"""
+        if sys.platform != 'win32':
+            return False  # 启动器只有 Windows 版本 其他系统从源码运行 用 git 更新代码
         launcher_type = self.detect_running_launcher_type() or 'launcher'
         current_version, latest_stable, latest_beta = (
             self.get_launcher_version_info(launcher_type)

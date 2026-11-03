@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import sys
 import time
 import urllib.parse
 from collections.abc import Callable
@@ -330,7 +331,10 @@ class PythonService:
             parsed_url = urllib.parse.urlparse(source_url)
             domain = parsed_url.netloc
             start_time = time.time()
-            result = cmd_utils.run_command(['ping', '-n', '1', '-w', '1000', domain])
+            if sys.platform == 'win32':
+                result = cmd_utils.run_command(['ping', '-n', '1', '-w', '1000', domain])
+            else:  # Linux 的 ping 参数不同: -c 次数 -W 超时秒数
+                result = cmd_utils.run_command(['ping', '-c', '1', '-W', '1', domain])
             end_time = time.time()
 
             ms_match = None

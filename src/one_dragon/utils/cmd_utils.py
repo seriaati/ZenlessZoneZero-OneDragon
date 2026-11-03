@@ -1,6 +1,8 @@
 import ctypes
+import math
 import platform
 import subprocess
+import sys
 import threading
 from collections.abc import Callable
 
@@ -28,12 +30,15 @@ def run_command(
         cwd = os_utils.get_work_dir()
 
     try:
-        # 在Windows上
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo = None
+        creationflags = 0
+        if sys.platform == 'win32':
+            # 在Windows上
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-        # 为子进程指定不创建新窗口的标志
-        creationflags = subprocess.CREATE_NO_WINDOW
+            # 为子进程指定不创建新窗口的标志
+            creationflags = subprocess.CREATE_NO_WINDOW
 
         process = subprocess.Popen(
             commands,
@@ -121,7 +126,20 @@ def shutdown_sys(seconds: int):
     :param seconds: 秒
     :return:
     """
-    subprocess.run(['shutdown', '/s', '/t', str(seconds)], check=False)
+    subprocess.run(get_shutdown_command(seconds), check=False)
+
+
+def get_shutdown_command(seconds: int) -> list[str]:
+    """
+    定时关机的命令
+    Linux 的 shutdown 只能按分钟定时 秒数向上取整为分钟
+    :param seconds: 秒
+    :return: 命令
+    """
+    if sys.platform == 'win32':
+        return ['shutdown', '/s', '/t', str(seconds)]
+    minutes = math.ceil(seconds / 60)
+    return ['shutdown', '-P', f'+{minutes}' if minutes > 0 else 'now']
 
 
 def cancel_shutdown_sys():
@@ -130,12 +148,26 @@ def cancel_shutdown_sys():
     使用 shutdown /a 命令
     :return:
     """
-    subprocess.run(['shutdown', '/a'], check=False)
+    subprocess.run(get_cancel_shutdown_command(), check=False)
+
+
+def get_cancel_shutdown_command() -> list[str]:
+    """取消定时关机的命令"""
+    if sys.platform == 'win32':
+        return ['shutdown', '/a']
+    return ['shutdown', '-c']
 
 
 def hibernate_sys() -> None:
     """让系统进入休眠状态。"""
-    subprocess.run(['shutdown', '/h'], check=False)
+    subprocess.run(get_hibernate_command(), check=False)
+
+
+def get_hibernate_command() -> list[str]:
+    """休眠的命令"""
+    if sys.platform == 'win32':
+        return ['shutdown', '/h']
+    return ['systemctl', 'hibernate']
 
 
 def sleep_sys() -> None:
