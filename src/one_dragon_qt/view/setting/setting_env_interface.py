@@ -1,3 +1,5 @@
+import sys
+
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QWidget
@@ -62,6 +64,9 @@ class SettingEnvInterface(VerticalScrollInterface):
             options_enum=ScreenshotMethodEnum
         )
         self.screenshot_method_opt.value_changed.connect(lambda: self.ctx.init_controller())
+        if sys.platform != 'win32':
+            # Linux 下只有一种截图方法 (XShm) 选项不起作用
+            self.screenshot_method_opt.setVisible(False)
         basic_group.addSettingCard(self.screenshot_method_opt)
 
         self.debug_opt = SwitchSettingCard(
@@ -82,6 +87,9 @@ class SettingEnvInterface(VerticalScrollInterface):
             icon=FluentIcon.CAMERA, title='复制截图到剪贴板',
             content='按下截图按键时，自动将截图复制到剪贴板'
         )
+        if sys.platform != 'win32':
+            # 复制图片到剪贴板只在 Windows 下实现
+            self.copy_screenshot_opt.setVisible(False)
         basic_group.addSettingCard(self.copy_screenshot_opt)
 
         return basic_group

@@ -1,12 +1,13 @@
 import contextlib
 import json
+import sys
 from collections.abc import Callable
 
 import cv2
 import numpy as np
 from cv2.typing import MatLike
 from PySide6.QtCore import QThread, Signal
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 from qfluentwidgets import FluentIcon, InfoBar, InfoBarPosition, PushButton, SettingCard
 
 from one_dragon.base.config.config_item import ConfigItem
@@ -469,7 +470,10 @@ class SettingPushInterface(VerticalScrollInterface):
             return
 
         # 复制到剪贴板
-        PcClipboard.copy_string(curl_command)
+        if sys.platform == 'win32':
+            PcClipboard.copy_string(curl_command)
+        else:
+            QApplication.clipboard().setText(curl_command)
         self._show_success_message("cURL 命令已复制到剪贴板！")
 
     def _validate_webhook_config(self) -> None:

@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import os
+import sys
 import uuid
 import webbrowser
 from datetime import datetime, timedelta
@@ -311,6 +312,9 @@ class SettingInstanceInterface(VerticalScrollInterface):
             icon=FluentIcon.FOLDER, title="游戏路径", text="选择"
         )
         self.game_path_opt.clicked.connect(self._on_game_path_clicked)
+        if sys.platform != 'win32':
+            # Linux 通过 Sleepy Launcher 启动游戏 不需要游戏路径
+            self.game_path_opt.setVisible(False)
         instance_settings_group.addSettingCard(self.game_path_opt)
 
         self.custom_win_title_input = LineEdit()

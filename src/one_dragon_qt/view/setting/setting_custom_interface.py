@@ -1,8 +1,10 @@
 import ctypes
 import os
 import shutil
+import sys
 from ctypes import wintypes
 
+from PySide6.QtCore import QStandardPaths
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QFileDialog, QWidget
 from qfluentwidgets import (
@@ -162,12 +164,16 @@ class SettingCustomInterface(VerticalScrollInterface):
         ThemeManager.set_theme_color(_ct)
 
     def _on_banner_select_clicked(self) -> None:
-        _dp = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
-        ctypes.windll.shell32.SHGetFolderPathW(None, 0x0027, None, 0, _dp)
+        if sys.platform == 'win32':
+            _dp = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
+            ctypes.windll.shell32.SHGetFolderPathW(None, 0x0027, None, 0, _dp)
+            pictures_dir = _dp.value
+        else:
+            pictures_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.PicturesLocation)
         _fp, _ = QFileDialog.getOpenFileName(
             self,
             f"{gt('选择你的')}{gt('背景图片')}",
-            _dp.value,
+            pictures_dir,
             filter="Images and Videos (*.png *.jpg *.jpeg *.webp *.bmp *.webm *.mp4 *.avi *.mov *.mkv);;Images (*.png *.jpg *.jpeg *.webp *.bmp);;Videos (*.webm *.mp4 *.avi *.mov *.mkv)"
         )
         if _fp is not None and _fp != '':

@@ -1,3 +1,5 @@
+import sys
+
 from PySide6.QtWidgets import QWidget
 from qfluentwidgets import FluentIcon, InfoBar, PushButton, SettingCardGroup
 
@@ -78,7 +80,11 @@ class SettingGameInterface(VerticalScrollInterface):
                                                  options_enum=TypeInputWay)
         basic_group.addSettingCard(self.input_way_opt)
 
-        basic_group.addSettingCard(self._get_background_mode_group())
+        background_mode_group = self._get_background_mode_group()
+        if sys.platform != 'win32':
+            # Linux 下输入只发给 gamescope 里的游戏 本来就是后台运行 不需要这组设置
+            background_mode_group.setVisible(False)
+        basic_group.addSettingCard(background_mode_group)
 
         self.hdr_btn_enable = PushButton(text=gt('启用 HDR'), icon=FluentIcon.SETTING, parent=self)
         self.hdr_btn_enable.clicked.connect(self._on_hdr_enable_clicked)
@@ -87,9 +93,14 @@ class SettingGameInterface(VerticalScrollInterface):
         self.hdr_btn = MultiPushSettingCard(icon=FluentIcon.SETTING, title='切换 HDR 状态',
                                             content='仅影响手动启动游戏，一条龙启动游戏会自动禁用 HDR',
                                             btn_list=[self.hdr_btn_disable, self.hdr_btn_enable])
+        launch_argument_group = self._get_launch_argument_group()
+        if sys.platform != 'win32':
+            # HDR 开关写的是 Windows 注册表；Linux 通过 Sleepy Launcher 启动游戏 不使用这里的启动参数
+            self.hdr_btn.setVisible(False)
+            launch_argument_group.setVisible(False)
         basic_group.addSettingCard(self.hdr_btn)
 
-        basic_group.addSettingCard(self._get_launch_argument_group())
+        basic_group.addSettingCard(launch_argument_group)
 
         return basic_group
 
@@ -185,6 +196,9 @@ class SettingGameInterface(VerticalScrollInterface):
 
         self._keyboard_group = self._get_keyboard_group()
         self._gamepad_group = self._get_gamepad_group()
+        if sys.platform != 'win32':
+            # Linux 下没有虚拟手柄 手柄按键用不上
+            self._gamepad_group.setVisible(False)
         key_settings_group.addSettingCard(self._keyboard_group)
         key_settings_group.addSettingCard(self._gamepad_group)
 

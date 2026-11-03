@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -339,7 +340,8 @@ class BattleAssistantInterface(AppRunInterface):
         w.exec()
 
     def _on_background_mode_changed(self, value: bool) -> None:
-        if value and not pc_button_utils.is_vgamepad_installed():
+        # Linux 下键鼠输入本来就只发给 gamescope 里的游戏 后台模式不需要虚拟手柄
+        if value and sys.platform == 'win32' and not pc_button_utils.is_vgamepad_installed():
             self.background_mode_opt.setValue(False, emit_signal=False)
             if self.background_mode_opt.adapter is not None:
                 self.background_mode_opt.adapter.set_value(False)

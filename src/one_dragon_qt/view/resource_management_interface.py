@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -323,6 +324,9 @@ class ResourceManagementInterface(VerticalScrollInterface):
             self.download_queue,
             self._build_launcher_spec,
         )
+        if sys.platform != 'win32':
+            # 启动器只有 Windows 版本 其他系统从源码运行
+            self.launcher_opt.setVisible(False)
         self.download_items_group.addSettingCard(self.launcher_opt)
 
         self.ocr_opt = self._create_model_card(

@@ -1,3 +1,5 @@
+import sys
+
 from qfluentwidgets import FluentIcon
 
 from one_dragon_qt.view.setting.setting_custom_interface import SettingCustomInterface
@@ -22,7 +24,8 @@ class AppSettingInterface(PivotNavigatorInterface):
         :return:
         """
         self.add_sub_interface(SettingGameInterface(ctx=self.ctx))
-        self.add_sub_interface(SettingOverlayInterface(ctx=self.ctx))
+        if sys.platform == 'win32':  # 悬浮窗依赖 Win32 窗口 API
+            self.add_sub_interface(SettingOverlayInterface(ctx=self.ctx))
         self.add_sub_interface(SettingEnvInterface(ctx=self.ctx))
         self.add_sub_interface(SettingPushInterface(ctx=self.ctx))
         self.add_sub_interface(SettingCustomInterface(ctx=self.ctx))
