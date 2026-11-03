@@ -11,6 +11,13 @@ from one_dragon.utils.log_utils import log
 from zzz_od.context.zzz_context import ZContext
 from zzz_od.operation.enter_game.auto_hdr import DisableAutoHDR, EnableAutoHDR
 
+if sys.platform != 'win32':
+    from one_dragon.base.controller.gamescope_display import find_game_pids
+
+# Linux 下通过 Sleepy Launcher (flatpak) 启动游戏 游戏运行在 gamescope 里
+# --just-run-game: 与 --run-game 相同 但只有预下载可用时也直接启动游戏 (需要真正更新时仍会打开启动器窗口)
+LINUX_LAUNCH_COMMAND: list[str] = ['flatpak', 'run', 'moe.launcher.sleepy-launcher', '--just-run-game']
+
 
 class OpenGame(Operation):
 
@@ -22,6 +29,9 @@ class OpenGame(Operation):
     @operation_node(name='打开游戏', is_start_node=True, screenshot_before_round=False)
     def open_game(self) -> OperationRoundResult:
         """禁用自动 HDR + 启动游戏 exe。"""
+        if sys.platform != 'win32':
+            return self.open_game_linux()
+
         hdr_op = DisableAutoHDR(self.ctx)
         hdr_op.execute()
 
@@ -58,6 +68,26 @@ class OpenGame(Operation):
 
         return self.round_success(wait=5)
 
+    def open_game_linux(self) -> OperationRoundResult:
+        """
+        Linux 下用 Sleepy Launcher 启动游戏。
+        不需要配置游戏路径 也没有自动 HDR 的注册表设置。
+        """
+        if len(find_game_pids()) > 0:
+            log.info('游戏进程已存在 不重复启动 直接等待游戏窗口')
+            return self.round_success()
+
+        log.info('尝试自动启动游戏 命令行指令 %s', ' '.join(LINUX_LAUNCH_COMMAND))
+        # 新建会话并断开标准输入输出 一条龙退出后游戏不会被一起结束
+        subprocess.Popen(
+            LINUX_LAUNCH_COMMAND,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return self.round_success(wait=5)
+
     @node_from(from_name='打开游戏')
     @operation_node(name='等待游戏打开', node_max_retry_times=60, screenshot_before_round=False)
     def wait_game(self) -> OperationRoundResult:
@@ -65,8 +95,10 @@ class OpenGame(Operation):
         self.ctx.controller.init_game_win()
         if self.ctx.controller.is_game_window_ready:
             self.ctx.controller.active_window()
-            hdr_op = EnableAutoHDR(self.ctx)
-            hdr_op.execute()
+            if sys.platform == 'win32':
+                hdr_op = EnableAutoHDR(self.ctx)
+                hdr_op.execute()
             return self.round_success()
         else:
-            return self.round_retry(wait=1)
+            # Linux 下 Wine 和 gamescope 启动较慢 每次多等一会 总共约 3 分钟
+            return self.round_retry(wait=1 if sys.platform == 'win32' else 3)

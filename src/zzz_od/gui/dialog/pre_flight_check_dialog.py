@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from PySide6.QtWidgets import QWidget
 from qfluentwidgets import BodyLabel, MessageBoxBase, SubtitleLabel
 
@@ -34,7 +36,8 @@ def check_pre_flight(ctx: ZContext) -> list[tuple[str, str, str | None]]:
 
     issues: list[tuple[str, str, str | None]] = []
 
-    if not ctx.game_account_config.game_path:
+    # Linux 下通过 Sleepy Launcher 启动游戏 不需要游戏路径
+    if sys.platform == 'win32' and not ctx.game_account_config.game_path:
         issues.append((
             '未设置游戏路径 - 请在「账户管理 → 多账户管理 → 当前账户设置」中配置',
             'app_accounts_interface',

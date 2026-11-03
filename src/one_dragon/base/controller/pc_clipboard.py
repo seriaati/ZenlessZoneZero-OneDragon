@@ -1,11 +1,19 @@
+import sys
 import time
 
-import pywintypes
-import win32clipboard
-import win32con
 from pynput.keyboard import Controller, Key
 
 from one_dragon.utils.log_utils import log, mask_text
+
+if sys.platform == 'win32':
+    import pywintypes
+    import win32clipboard
+    import win32con
+else:
+    from one_dragon.base.controller.gamescope_display import GamescopeDisplay
+    from one_dragon.base.controller.pc_button.xtest_keyboard_mouse_controller import (
+        XTestKeyboardMouseController,
+    )
 
 
 class PcClipboard:
@@ -18,9 +26,32 @@ class PcClipboard:
         :param text: 要复制到剪贴板的文本
         :return: 无
         """
+        if sys.platform != 'win32':
+            PcClipboard.type_on_gamescope(text)
+            return
         PcClipboard.copy_string(text)
         PcClipboard.paste_text()
         PcClipboard.empty_clipboard()
+
+    @staticmethod
+    def type_on_gamescope(text: str) -> None:
+        """
+        Linux 下代替复制粘贴 用 XTest 把文本逐字输入到 gamescope 里的游戏。
+
+        不用剪贴板的原因: gamescope 会把游戏显示上的剪贴板同步到宿主桌面的剪贴板
+        粘贴账号密码会把它们留在桌面剪贴板里。
+        gamescope 里没有输入法 逐字输入不会被输入法干扰。
+        当前键盘布局打不出的字符 (例如中文) 会被跳过。
+
+        :param text: 要输入的文本
+        :return: 无
+        """
+        log.info(f'逐字输入文字到游戏:{mask_text(text)}')
+        gamescope = GamescopeDisplay()
+        try:
+            XTestKeyboardMouseController(gamescope).type_text(text)
+        finally:
+            gamescope.reset()
 
     @staticmethod
     def empty_clipboard() -> None:
