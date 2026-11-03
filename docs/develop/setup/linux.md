@@ -48,6 +48,8 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 - 项目根目录没有 `.env` 文件时，不要加 `--env-file .env`。
 - 一条龙会通过 `flatpak run moe.launcher.sleepy-launcher --just-run-game` 自动启动游戏，并等待最多约 3 分钟，直到找到游戏窗口。游戏已经在运行时不会重复启动。
   - `--just-run-game` 与 `--run-game` 相同，区别是只有预下载可用时也会直接启动游戏。游戏需要真正更新时，Sleepy Launcher 会打开自己的窗口，需要手动处理。
+  - 启动前会去掉 `SSL_CERT_FILE`、`SSL_CERT_DIR` 和 `NoDefaultCurrentDirectoryInExePath` 这几个环境变量。flatpak 会把环境变量带进沙盒：前两个指向宿主机的证书路径，沙盒里没有，Sleepy Launcher 读不到证书会直接崩溃；第三个是 Windows 变量，Wine 也认，设置后找不到游戏 exe。
+  - Sleepy Launcher 的输出写在 `.log/sleepy_launcher.log`，启动失败时先看这里；游戏本身的日志在 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher/game.log`。
 
 ### 2.1. 代码更新
 
@@ -148,7 +150,6 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 
 ## 5. 未验证 / 已知限制
 
-- **冷启动游戏**：没有实际从未运行状态通过 `--just-run-game` 启动过游戏。
 - **登录**：没有在真正的登录页验证输入账号密码和进入游戏（不能退出游戏）。
 - **关闭游戏**（`close_game`，向游戏进程发 SIGTERM）、关机 / 休眠 / 睡眠：只检查过拼出的命令，没有实际执行。
 - **游戏重启后重新连接**：只模拟过。

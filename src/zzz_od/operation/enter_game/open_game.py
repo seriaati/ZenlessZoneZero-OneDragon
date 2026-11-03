@@ -1,11 +1,13 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 from one_dragon.base.operation.operation import Operation
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import os_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from zzz_od.context.zzz_context import ZContext
@@ -78,14 +80,25 @@ class OpenGame(Operation):
             return self.round_success()
 
         log.info('尝试自动启动游戏 命令行指令 %s', ' '.join(LINUX_LAUNCH_COMMAND))
-        # 新建会话并断开标准输入输出 一条龙退出后游戏不会被一起结束
-        subprocess.Popen(
-            LINUX_LAUNCH_COMMAND,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
+        # flatpak 会把环境变量传进沙盒 以下变量会让启动失败 需要去掉:
+        # - SSL_CERT_FILE / SSL_CERT_DIR: 宿主机的证书路径在沙盒里不存在 Sleepy Launcher 读不到证书会直接崩溃
+        # - NoDefaultCurrentDirectoryInExePath: Windows 变量 Wine 也认 设置后按相对路径找不到游戏 exe
+        env = {
+            k: v for k, v in os.environ.items()
+            if k not in ('SSL_CERT_FILE', 'SSL_CERT_DIR', 'NoDefaultCurrentDirectoryInExePath')
+        }
+        # 启动器的输出写到日志文件 启动失败时可以排查
+        launcher_log_path = Path(os_utils.get_path_under_work_dir('.log')) / 'sleepy_launcher.log'
+        with launcher_log_path.open('w', encoding='utf-8') as launcher_log:
+            # 新建会话 一条龙退出后游戏不会被一起结束
+            subprocess.Popen(
+                LINUX_LAUNCH_COMMAND,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=launcher_log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
         return self.round_success(wait=5)
 
     @node_from(from_name='打开游戏')
