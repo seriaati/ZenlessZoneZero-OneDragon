@@ -1,13 +1,21 @@
 import ctypes
+import sys
 import time
 
 from cv2.typing import MatLike
 
-from one_dragon.base.controller.pc_controller_base import PcControllerBase
 from one_dragon.utils import cv2_utils
 from zzz_od.config.game_config import GameConfig
 from zzz_od.const import game_const
 from zzz_od.screen_area.screen_normal_world import ScreenNormalWorldEnum
+
+if sys.platform == 'win32':
+    from one_dragon.base.controller.pc_controller_base import PcControllerBase
+else:
+    # Linux 下游戏运行在 gamescope 里 使用对应的窗口 / 截图 / 输入实现
+    from one_dragon.base.controller.pc_controller_linux import (
+        PcControllerLinux as PcControllerBase,
+    )
 
 
 class ZPcController(PcControllerBase):
@@ -221,7 +229,10 @@ class ZPcController(PcControllerBase):
             self._gamepad_turn(dx, dy)
         else:
             self._ensure_mouse_mode()
-            ctypes.windll.user32.mouse_event(0x0001, int(dx), int(dy))
+            if sys.platform == 'win32':
+                ctypes.windll.user32.mouse_event(0x0001, int(dx), int(dy))
+            else:
+                self.mouse_move_relative(int(dx), int(dy))
 
     def _gamepad_turn(self, dx: float, dy: float) -> None:
         """

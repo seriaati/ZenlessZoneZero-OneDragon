@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import ctypes
+import sys
 from ctypes.wintypes import RECT
 
 import pyautogui
-import win32ui
-from pygetwindow import Win32Window
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.log_utils import log
+
+if sys.platform == 'win32':
+    import win32ui
+    from pygetwindow import Win32Window
 
 
 class PcGameWindow:

@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import contextlib
 import ctypes
+import sys
 import time
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import pyautogui
-import win32api
-import win32con
-import win32gui
 from cv2.typing import MatLike
 from pynput import keyboard
 
@@ -31,6 +29,11 @@ from one_dragon.base.controller.pc_screenshot.pc_screenshot_controller import (
 )
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
+
+if sys.platform == 'win32':
+    import win32api
+    import win32con
+    import win32gui
 
 if TYPE_CHECKING:
     from one_dragon.base.controller.drag_timing import DragTiming
