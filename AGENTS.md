@@ -16,6 +16,7 @@
 - 运行基准：1080p；配置以 YAML 为主。
 - 所有测试统一在独立仓 `zzz-od-test/test/`(`.gitignore`,须 clone 到仓库根目录才能读/改;clone 见 [quickstart §②](docs/develop/setup/quickstart.md),测试规范见 [testing/](docs/develop/testing/README.md))。主仓不保留测试。AI 查测试用 `Read`/`grep` 显式指定 `zzz-od-test/`(默认搜索会跳过 .gitignore)。
 - 相关仓库全貌(测试仓 / yolo 训练仓 / 数据集 / 官网 blog)见 [相关仓库](docs/develop/setup/repositories.md);外部贡献者需 fork 后开发。
+- Linux：本 fork 可在 Linux 上从源码运行（游戏须在 gamescope 里）。Linux 代码放在独立的 `*_linux.py` / `gamescope_display.py` / `xtest_*` / `evdev_*` 文件里，Windows 文件只加 `sys.platform` 分支，不改 Windows 行为。运行与实现见 [docs/develop/setup/linux.md](docs/develop/setup/linux.md)。Linux 下运行 GUI：`PYTHONPATH=src uv run src/zzz_od/gui/app.py`。
 
 ## 常用命令
 

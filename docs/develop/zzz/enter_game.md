@@ -6,6 +6,8 @@
 - `OpenAndEnterGame` 负责启动游戏、等待窗口就绪、执行 `EnterGame`。
 - `EnterGame` 负责登录页识别、账号输入、点击进入游戏、等待进入大世界。
 
+Linux 下 `OpenGame` 不使用游戏路径，而是运行 `flatpak run moe.launcher.sleepy-launcher --just-run-game`；账号密码逐个字符输入，不走剪贴板。详见 [Linux 运行说明](../setup/linux.md)。
+
 ## 主流程节点
 
 `EnterGame` 当前入口节点是 `画面识别`。它负责登录页、账号输入入口、切换账号入口，以及进入游戏点击后状态的提前分流。

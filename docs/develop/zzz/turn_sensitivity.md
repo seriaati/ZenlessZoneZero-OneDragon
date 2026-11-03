@@ -138,3 +138,7 @@ controller.move_mouse_relative(dx, dy)
 
 - 前台键鼠口径：不直接依赖 `turn_dx`
 - 后台手柄口径：会依赖 `gamepad_turn_speed`
+
+## 6. Linux
+
+Linux 下视角转动用 XTest 相对移动，同样的像素数只转 Windows 约 1/1.64 的角度。`PcControllerLinux.mouse_move_relative` 会把所有相对移动乘以 `RELATIVE_MOVE_SCALE = 9.0 / 5.5`，因此上表里固定像素的转向在 Linux 下与 Windows 转同样的角度（前提是游戏镜头灵敏度为默认的 3）。`turn_dx` 仍需在 Linux 上跑一次「灵敏度校准」得到；Linux 下没有虚拟手柄，`gamepad_turn_speed` 不使用。详见 [Linux 运行说明](../setup/linux.md)。

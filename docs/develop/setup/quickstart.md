@@ -7,7 +7,7 @@
 
 ## 前提
 
-- **Windows**：项目仅支持 `win32`（见 `pyproject.toml` 的 `environments`）。
+- **Windows**：项目主要支持 `win32`（见 `pyproject.toml` 的 `environments`）。Linux（游戏运行在 gamescope 里）的不同之处见 [Linux 运行说明](linux.md)。
 - **终端**：PowerShell（下文命令均为 PowerShell 语法）。
 - **Git**：已安装。
 
