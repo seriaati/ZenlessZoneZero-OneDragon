@@ -11,7 +11,9 @@ dependencies = [
     "opencv-python==4.13.0.92",
     "pyautogui==0.9.54",
     "pynput==1.8.1",
-    "onnxruntime-directml==1.24.4",
+    "onnxruntime-directml==1.24.4; sys_platform == 'win32'",
+    # Linux 使用 CUDA 推理；cuda/cudnn extra 通过 pip 带上运行库，不依赖系统 CUDA 版本
+    "onnxruntime-gpu[cuda,cudnn]==1.24.4; sys_platform == 'linux'",
     "shapely==2.1.2",
     "pyclipper==1.4.0",
     "soundcard==0.4.6",
@@ -21,7 +23,11 @@ dependencies = [
     "psutil==7.2.2",
     # pywin32>=312 的 wheel 不再内置 mfc140u.dll，未装 VC++ 2015-2022 Redistributable (x64) 的机器
     # import win32ui 会闪退（issue #2428）；锁 <312 沿用 311（自带 pythonwin/mfc140u.dll）。等上游 build 313 修复后放开。
-    "pywin32<312",
+    "pywin32<312; sys_platform == 'win32'",
+    # Linux 下通过 X11 访问 gamescope 的游戏显示（截图 / XTest 输入）
+    "python-xlib==0.33; sys_platform == 'linux'",
+    # Linux 下全局快捷键直接读取 /dev/input（Wayland 下 pynput 收不到全局按键）
+    "evdev==1.9.3; sys_platform == 'linux'",
     "websocket-client==1.9.2",
 ]
 
@@ -48,7 +54,7 @@ gamepad = [
 [tool.uv]
 package = false
 cache-dir = "./.install/uv_cache"
-environments = ["sys_platform == 'win32'"]
+environments = ["sys_platform == 'win32'", "sys_platform == 'linux'"]
 default-groups = []
 
 # Ruff configuration
