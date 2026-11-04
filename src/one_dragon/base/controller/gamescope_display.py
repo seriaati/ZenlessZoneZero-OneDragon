@@ -64,6 +64,30 @@ def find_game_pids() -> list[int]:
     return pids
 
 
+def is_in_gamescope(pid: int) -> bool:
+    """进程是否运行在 gamescope 里 (沿父进程往上找 gamescope)
+
+    玩家自己玩时可能不开 gamescope 这时游戏在宿主桌面上
+    一条龙不能控制这种游戏 否则截图和键鼠会作用到玩家的桌面
+
+    Args:
+        pid: 进程号
+
+    Returns:
+        是否在 gamescope 里
+    """
+    while pid > 1:
+        try:
+            argv0 = (Path(f'/proc/{pid}/cmdline').read_bytes().split(b'\0', 1)[0]).decode('utf-8', errors='ignore')
+            stat_fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+        except OSError:
+            return False
+        if re.split(r'[\\/]', argv0)[-1].lower().startswith('gamescope'):
+            return True
+        pid = int(stat_fields[1])
+    return False
+
+
 def kill_dead_game_sessions(min_age_seconds: float = 0) -> int:
     """清理游戏已经退出、但没有关掉的 gamescope 会话。
 
@@ -258,6 +282,9 @@ class GamescopeDisplay:
             self.reset()
 
             for pid in find_game_pids():
+                if not is_in_gamescope(pid):
+                    log.debug(f'游戏进程不在 gamescope 里 跳过 pid={pid}')
+                    continue
                 display_name = get_process_display(pid)
                 if display_name is None:
                     continue

@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -16,12 +17,45 @@ from zzz_od.operation.enter_game.auto_hdr import DisableAutoHDR, EnableAutoHDR
 if sys.platform != 'win32':
     from one_dragon.base.controller.gamescope_display import (
         find_game_pids,
+        is_in_gamescope,
         kill_dead_game_sessions,
     )
 
-# Linux 下通过 Sleepy Launcher (flatpak) 启动游戏 游戏运行在 gamescope 里
+# Linux 下通过 Sleepy Launcher (flatpak) 启动游戏 游戏必须运行在 gamescope 里 (一条龙的截图和输入都发到 gamescope 的显示上)
+# 玩家自己玩时可能关掉了启动器里的 gamescope (gamescope 里鼠标转视角会卡顿)
+# 所以一条龙不用玩家的启动器设置: 复制一份启动器配置 打开 gamescope 后放到单独的目录 用环境变量 LAUNCHER_FOLDER 让启动器读这份配置
+# 配置里的游戏 / Wine 前缀 / 运行器等都是绝对路径 复制的配置仍然使用同一个游戏 玩家的设置不会被改动
+SLEEPY_LAUNCHER_DATA_DIR: Path = Path.home() / '.var/app/moe.launcher.sleepy-launcher/data'
+SLEEPY_LAUNCHER_FOLDER: Path = SLEEPY_LAUNCHER_DATA_DIR / 'sleepy-launcher'
+ONE_DRAGON_LAUNCHER_FOLDER: Path = SLEEPY_LAUNCHER_DATA_DIR / 'sleepy-launcher-onedragon'
 # --just-run-game: 与 --run-game 相同 但只有预下载可用时也直接启动游戏 (需要真正更新时仍会打开启动器窗口)
-LINUX_LAUNCH_COMMAND: list[str] = ['flatpak', 'run', 'moe.launcher.sleepy-launcher', '--just-run-game']
+LINUX_LAUNCH_COMMAND: list[str] = [
+    'flatpak', 'run', f'--env=LAUNCHER_FOLDER={ONE_DRAGON_LAUNCHER_FOLDER}',
+    'moe.launcher.sleepy-launcher', '--just-run-game',
+]
+
+
+def write_gamescope_launcher_config() -> bool:
+    """复制玩家的 Sleepy Launcher 配置 打开 gamescope 写到一条龙专用的启动器目录
+
+    Returns:
+        是否成功
+    """
+    config_path = SLEEPY_LAUNCHER_FOLDER / 'config.json'
+    try:
+        config = json.loads(config_path.read_text(encoding='utf-8'))
+        game = config['game']
+        game['enhancements']['gamescope']['enabled'] = True
+        # gamescope 的 WSI 层开着时 X 截图是黑屏
+        game['environment']['ENABLE_GAMESCOPE_WSI'] = '0'
+    except (OSError, ValueError, KeyError, TypeError):
+        log.error(f'读取 Sleepy Launcher 配置失败 {config_path}', exc_info=True)
+        return False
+    ONE_DRAGON_LAUNCHER_FOLDER.mkdir(parents=True, exist_ok=True)
+    (ONE_DRAGON_LAUNCHER_FOLDER / 'config.json').write_text(
+        json.dumps(config, indent=4, ensure_ascii=False), encoding='utf-8'
+    )
+    return True
 
 
 class OpenGame(Operation):
@@ -78,13 +112,19 @@ class OpenGame(Operation):
         Linux 下用 Sleepy Launcher 启动游戏。
         不需要配置游戏路径 也没有自动 HDR 的注册表设置。
         """
-        if len(find_game_pids()) > 0:
+        pids = find_game_pids()
+        if any(is_in_gamescope(pid) for pid in pids):
             log.info('游戏进程已存在 不重复启动 直接等待游戏窗口')
             return self.round_success()
+        if len(pids) > 0:
+            return self.round_fail('游戏没有在 gamescope 里运行 一条龙无法控制 请先关闭游戏 再由一条龙启动')
 
         # 之前游戏崩溃或退出后 残留的 gamescope 会话会一直占着窗口和显存 先清理掉
         # 只清理启动超过 1 分钟的 避免误伤刚由启动器打开、游戏进程还没出现的会话
         kill_dead_game_sessions(min_age_seconds=60)
+
+        if not write_gamescope_launcher_config():
+            return self.round_fail('读取 Sleepy Launcher 配置失败 请先在启动器里装好游戏')
 
         log.info('尝试自动启动游戏 命令行指令 %s', ' '.join(LINUX_LAUNCH_COMMAND))
         # flatpak 会把环境变量传进沙盒 以下变量会让启动失败 需要去掉:

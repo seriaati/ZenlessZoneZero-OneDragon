@@ -18,9 +18,9 @@
   flatpak install org.freedesktop.Platform.VulkanLayer.gamescope//25.08
   ```
 
-- Sleepy Launcher 设置里：
-  - 打开 gamescope。gamescope 和游戏的分辨率都用 1920x1080（项目的坐标都基于 1080p）。
-  - 游戏环境变量加上 `ENABLE_GAMESCOPE_WSI=0`。不加的话，从 X 截到的画面是全黑的。
+- Sleepy Launcher 设置里：gamescope 的分辨率设置（gamescope 窗口和游戏都用 1920x1080，项目的坐标都基于 1080p）。gamescope 开关本身不用打开，一条龙启动游戏时会自己打开（见 [2. 安装和启动](#2-安装和启动)）。
+  - 自己玩时建议关掉 gamescope：gamescope 里用鼠标转视角会严重卡顿（FSR、gamemode、强制捕获光标、自适应同步都试过，无关，只跟 gamescope 开关有关）。
+  - 一条龙只控制运行在 gamescope 里的游戏。自己开着游戏（没有 gamescope）时运行一条龙，会提示先关闭游戏。
 - 游戏内设置：
   - 文本语言用 **简体中文** 或 **English**。项目的文字识别按这两种语言准备，繁体中文下很多画面认不出来。
   - 想用声音闪避时，游戏的 **主音量必须大于 0**。声音是从系统的声音输出的监听口（monitor）录的，游戏静音时录到的就是一片静音。系统音量或系统静音不影响。
@@ -51,9 +51,10 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
   - 终端：`ln -s "$PWD/deploy/linux/zzz-od" ~/bin/zzz-od`（`~/bin` 需要在 `PATH` 里），之后直接运行 `zzz-od`。
   - 应用菜单：在 `~/.local/share/applications/` 新建 `.desktop` 文件，`Exec=` 写这个脚本（或上面软链接）的绝对路径。图标可以用 `assets/ui/logo.ico` 转成的 png。
 - 一条龙会通过 `flatpak run moe.launcher.sleepy-launcher --just-run-game` 自动启动游戏，并等待最多约 3 分钟，直到找到游戏窗口。游戏已经在运行时不会重复启动。
+  - 一条龙不用玩家的启动器设置启动：每次启动前把 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher/config.json` 复制到 `.../data/sleepy-launcher-onedragon/config.json`，把 gamescope 打开、加上环境变量 `ENABLE_GAMESCOPE_WSI=0`（不加的话从 X 截到的画面是全黑的），再用 `flatpak run --env=LAUNCHER_FOLDER=<这个目录> ...` 让启动器读这份配置。配置里的游戏、Wine 前缀、运行器都是绝对路径，所以用的还是同一个游戏；玩家自己的设置不会被改动，启动器退出时写回的配置也只写到这个目录。这次启动的启动器日志 `game.log` / `debug.log` 也在这个目录。
   - `--just-run-game` 与 `--run-game` 相同，区别是只有预下载可用时也会直接启动游戏。游戏需要真正更新时，Sleepy Launcher 会打开自己的窗口，需要手动处理。
   - 启动前会去掉 `SSL_CERT_FILE`、`SSL_CERT_DIR` 和 `NoDefaultCurrentDirectoryInExePath` 这几个环境变量。flatpak 会把环境变量带进沙盒：前两个指向宿主机的证书路径，沙盒里没有，Sleepy Launcher 读不到证书会直接崩溃；第三个是 Windows 变量，Wine 也认，设置后找不到游戏 exe。
-  - Sleepy Launcher 的输出写在 `.log/sleepy_launcher.log`，启动失败时先看这里；游戏本身的日志在 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher/game.log`。
+  - Sleepy Launcher 的输出写在 `.log/sleepy_launcher.log`，启动失败时先看这里；游戏的 Wine 输出在 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher-onedragon/game.log`（一条龙启动时；自己从启动器启动时在 `.../sleepy-launcher/game.log`）。
 
 ### 2.1. 代码更新
 
