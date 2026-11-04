@@ -131,6 +131,11 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 
 - Windows 下录音设备用的是与扬声器 id 相同的回环设备；Linux（PulseAudio / PipeWire）下改为默认输出设备的监听口 `<默认扬声器 id>.monitor`。
 - Linux 下录音时指定 `blocksize` 为 10 ms。不指定时 PulseAudio 约 2 秒才交付一次数据，闪避会晚约 2 秒。
+- **一条龙启动的游戏没有声音**（`one_dragon/utils/game_audio_linux.py`）：启动前创建一个不接任何设备的虚拟输出（null sink，名称 `onedragon_game`，在系统声音设置里显示为 `OneDragon-Game`），并在一条龙自己的启动器配置里给游戏加环境变量 `PULSE_SINK=onedragon_game`，游戏的声音全部输出到这里，玩家听不到。
+  - 不直接把游戏静音或音量调 0：那样游戏声音不会进入任何监听口，声音闪避就录不到了。
+  - 声音闪避读取游戏进程的环境变量，有 `PULSE_SINK=onedragon_game` 时从 `onedragon_game.monitor` 录音，否则还是从默认输出设备的监听口录。
+  - 想听一条龙启动的游戏声音：在系统音量面板里把 `ZenlessZoneZero.exe` 的输出切到扬声器。
+  - 虚拟输出创建后一直保留（没有声音流时不占资源），玩家自己启动的游戏不受影响。
 
 ### 3.8. 其他 Windows 专用功能的处理
 

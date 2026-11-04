@@ -20,6 +20,7 @@ if sys.platform != 'win32':
         is_in_gamescope,
         kill_dead_game_sessions,
     )
+    from one_dragon.utils.game_audio_linux import GAME_SINK_NAME, ensure_game_sink
 
 # Linux 下通过 Sleepy Launcher (flatpak) 启动游戏 游戏必须运行在 gamescope 里 (一条龙的截图和输入都发到 gamescope 的显示上)
 # 玩家自己玩时可能关掉了启动器里的 gamescope (gamescope 里鼠标转视角会卡顿)
@@ -48,6 +49,10 @@ def write_gamescope_launcher_config() -> bool:
         game['enhancements']['gamescope']['enabled'] = True
         # gamescope 的 WSI 层开着时 X 截图是黑屏
         game['environment']['ENABLE_GAMESCOPE_WSI'] = '0'
+        # 游戏声音输出到静音用的虚拟输出 玩家听不到 声音闪避仍能录到 (见 game_audio_linux)
+        # 虚拟输出创建失败时不设置 游戏正常发声
+        if ensure_game_sink():
+            game['environment']['PULSE_SINK'] = GAME_SINK_NAME
     except (OSError, ValueError, KeyError, TypeError):
         log.error(f'读取 Sleepy Launcher 配置失败 {config_path}', exc_info=True)
         return False
