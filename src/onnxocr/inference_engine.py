@@ -32,10 +32,27 @@ DEFAULT_CUDA_EP_CFG: dict[str, Any] = {
     # DEFAULT 在 cuDNN 9 下卷积会走 Fallback 模式 比 CPU 还慢 (1080p 检测约 200ms)
     # HEURISTIC 按启发式选算法 实测 1080p 检测约 48ms 且新尺寸的首次开销小
     "cudnn_conv_algo_search": "HEURISTIC",
+    # 默认 kNextPowerOfTwo 每次按 2 的幂扩容显存池 只占不还 改为按需申请
+    "arena_extend_strategy": "kSameAsRequested",
     "device_id": 0,
 }
 DEFAULT_DML_EP_CFG: dict[str, Any] = {}
 DEFAULT_CANN_EP_CFG: dict[str, Any] = {}
+
+
+def get_run_options(session: InferenceSession) -> onnxruntime.RunOptions | None:
+    """CUDA 会话每次推理后收缩显存池 把这次推理多申请的显存还回去
+
+    OCR 输入尺寸不固定 显存池会涨到最大一次推理所需的大小 (实测 det+rec 2GB 以上)
+    8G 显卡上和游戏抢显存 游戏切场景时会显存不足崩溃
+    收缩后空闲占用约 150MB 每次推理多 3~6ms
+    """
+    if EP.CUDA.value not in session.get_providers():
+        return None
+    device_id = session.get_provider_options()[EP.CUDA.value]["device_id"]
+    run_options = onnxruntime.RunOptions()
+    run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", f"gpu:{device_id}")
+    return run_options
 
 
 def get_available_providers() -> list[str]:

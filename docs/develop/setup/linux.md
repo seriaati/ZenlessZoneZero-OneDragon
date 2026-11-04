@@ -71,6 +71,7 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 
 - 在「资源管理」里打开闪光识别（`flash_classifier`）和 OCR 的 GPU 选项会快很多：闪光识别每帧 CPU 约 14 ms，CUDA 约 4 ms；整屏 OCR CPU 约 340 ms，CUDA 约 170 ms。
 - 启动时 onnxruntime 会打印一条 `/sys/class/drm/card0/device/vendor` 的警告，可以忽略。
+- 显存：游戏（DX12，1080p）加上桌面程序已经接近 8G。显存不够时游戏会在切换场景时直接崩溃：游戏的 `Player.log` 最后是 `Async SRP` 相关的报错，内核日志（`journalctl -k`）有 `NVRM: Out of memory`，一条龙随后报「游戏窗口未就绪」。用 `nvidia-smi` 可以看各进程占了多少显存。
 
 ## 3. Linux 后端实现
 
@@ -122,6 +123,7 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 
 - `one_dragon/utils/gpu_executor.py` 的 `preload_cuda_dlls()` 在创建 CUDA session 前调用 `onnxruntime.preload_dlls()`，加载 pip 包里的 CUDA / cuDNN 运行库。不调用时 CUDA session 创建失败，onnxruntime 会悄悄退回 CPU。
 - OCR 的 CUDA 设置 `cudnn_conv_algo_search` 用 `HEURISTIC`。用 `DEFAULT` 时 cuDNN 9 会刷大量警告，而且比 CPU 还慢。
+- OCR 的 CUDA 设置 `arena_extend_strategy` 用 `kSameAsRequested`，并且每次推理都带上运行选项 `memory.enable_memory_arena_shrinkage`（`onnxocr/inference_engine.py` 的 `get_run_options()`），推理结束后把这次多申请的显存还回去。OCR 的输入尺寸不固定，不收缩的话 onnxruntime 的显存池只涨不降，实际运行中一条龙涨到过 2.8G，导致游戏显存不足崩溃。收缩后 OCR 空闲时约占 180MB，每次推理多 3~6 ms。
 
 ### 3.7. 声音闪避
 

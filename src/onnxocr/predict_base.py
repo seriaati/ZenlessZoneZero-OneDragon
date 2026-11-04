@@ -1,4 +1,4 @@
-from onnxocr.inference_engine import InferenceSession, create_session
+from onnxocr.inference_engine import InferenceSession, create_session, get_run_options
 from onnxocr.logger import get_logger
 
 log = get_logger("predict_base")
@@ -47,4 +47,6 @@ class PredictBase:
         return input_feed
 
     def run_onnx_session(self, onnx_session, output_names, input_feed):
-        return gpu_executor.run_session(onnx_session, output_names, input_feed=input_feed)
+        return gpu_executor.run_session(
+            onnx_session, output_names, input_feed=input_feed, run_options=get_run_options(onnx_session)
+        )
