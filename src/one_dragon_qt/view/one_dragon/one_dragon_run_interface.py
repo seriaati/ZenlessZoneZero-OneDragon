@@ -114,6 +114,7 @@ class OneDragonRunInterface(SplitAppRunInterface):
             app_list=self.config.app_list,
             instance_idx=self.ctx.current_instance_idx
         )
+        self._refresh_running_app()
 
     def _refresh_app_config(self) -> None:
         self.config = self.ctx.app_group_manager.get_one_dragon_group_config(
@@ -141,6 +142,7 @@ class OneDragonRunInterface(SplitAppRunInterface):
         self.after_done_opt.setValue(self.ctx.one_dragon_config.after_done)
 
         self._context_event_signal.instance_changed.connect(self._on_instance_changed)
+        self._context_event_signal.app_state_changed.connect(self._on_app_state_changed_ui)
         self.run_all_apps_signal.connect(self.run_app)
 
         if self.ctx.signal.start_onedragon:
@@ -158,6 +160,8 @@ class OneDragonRunInterface(SplitAppRunInterface):
         SplitAppRunInterface.on_interface_hidden(self)
         with contextlib.suppress(RuntimeError):
             self._context_event_signal.instance_changed.disconnect(self._on_instance_changed)
+        with contextlib.suppress(RuntimeError):
+            self._context_event_signal.app_state_changed.disconnect(self._on_app_state_changed_ui)
         window = self.window()
         if isinstance(window, MainAppWindowBase):
             with contextlib.suppress(RuntimeError):
@@ -210,9 +214,35 @@ class OneDragonRunInterface(SplitAppRunInterface):
     def on_context_state_changed(self) -> None:
         SplitAppRunInterface.on_context_state_changed(self)
         self.app_run_list.update_cards_display()
+        self._refresh_running_app()
 
     def _on_app_state_changed(self, event) -> None:
+        """
+        应用开始/停止 这是context的事件 在事件线程回调 不能改UI
+        """
+        self._context_event_signal.app_state_changed.emit()
+
+    def _on_app_state_changed_ui(self) -> None:
+        """
+        应用开始/停止 这是signal 可以改ui
+        """
         self.app_run_list.update_cards_display()
+        self._refresh_running_app()
+
+    def _refresh_running_app(self) -> None:
+        """
+        标记当前正在运行的应用，并在状态文字中显示应用名称
+        """
+        run_context = self.ctx.run_context
+        app_id = None if run_context.is_context_stop else run_context.current_app_id
+        if app_id == self.app_id:  # 一条龙本身 在子应用之间切换时出现
+            app_id = None
+        self.app_run_list.set_running_app(app_id)
+
+        text = f"{gt('当前状态')} {run_context.run_status_text}"
+        if app_id is not None and run_context.is_app_registered(app_id):
+            text += f" - {gt(run_context.get_application_name(app_id))}"
+        self.state_text.setText(text)
 
     def _on_app_list_changed(self, new_app_list: list[ApplicationGroupConfigItem]) -> None:
         """

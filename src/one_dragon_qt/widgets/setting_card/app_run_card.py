@@ -9,6 +9,7 @@ from qfluentwidgets import (
     RoundMenu,
     SwitchButton,
     TransparentToolButton,
+    themeColor,
 )
 
 from one_dragon.base.operation.application.application_group_config import (
@@ -41,6 +42,7 @@ class AppRunCard(DraggableListItem):
     ):
         self.app: ApplicationGroupConfigItem = app
         self.run_record: AppRunRecord | None = run_record
+        self._running: bool = False  # 是否为当前正在运行的应用
 
         self.setting_btn = TransparentToolButton(FluentIcon.SETTING, None)
         self.setting_btn.setToolTip(gt('应用设置'))
@@ -93,8 +95,12 @@ class AppRunCard(DraggableListItem):
         """
         title = gt(self.app.app_name)
         self.content_widget.setTitle(title)
-        if self.run_record is None:
+        if self._running:
+            self.content_widget.setContent(gt('正在运行'))
+            self.content_widget.iconLabel.setIcon(FluentIcon.PLAY_SOLID.icon(color=themeColor()))
+        elif self.run_record is None:
             self.content_widget.setContent('')
+            self.content_widget.iconLabel.setIcon(FluentIcon.GAME)
         else:
             self.content_widget.setContent(f"{gt('上次运行')} {self.run_record.run_time}")
 
@@ -159,6 +165,15 @@ class AppRunCard(DraggableListItem):
         self.move_top_action.setEnabled(not arg__1)
         self.run_btn.setDisabled(arg__1)
         self.switch_btn.setDisabled(arg__1)
+
+    def set_running(self, running: bool) -> None:
+        """
+        设置是否为当前正在运行的应用
+        """
+        if self._running == running:
+            return
+        self._running = running
+        self.update_display()
 
     def set_switch_on(self, on: bool) -> None:
         self.switch_btn.setChecked(on)

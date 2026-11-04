@@ -161,6 +161,16 @@ class AppRunList(DraggableList):
         for card in self._app_cards:
             card.update_display()
 
+    def set_running_app(self, app_id: str | None) -> None:
+        """
+        标记当前正在运行的应用卡片
+
+        Args:
+            app_id: 正在运行的应用ID，None 表示没有应用在运行
+        """
+        for card in self._app_cards:
+            card.set_running(card.app.app_id == app_id)
+
     def _on_app_move_top(self, app_id: str) -> None:
         """
         应用置顶处理
