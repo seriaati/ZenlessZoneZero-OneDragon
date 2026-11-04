@@ -96,6 +96,7 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 - 游戏窗口优先取根窗口属性 `GAMESCOPE_FOCUSED_WINDOW`，再按窗口标题（`ZenlessZoneZero` / `绝区零` / 自定义标题）查找。gamescope 不维护 `_NET_CLIENT_LIST`。
 - 每次调用都检查游戏进程还在不在；游戏重启后会重新查找。
 - 窗口、截图、输入共用一个 python-xlib 连接。
+- **残留会话清理**（`gamescope_display.kill_dead_game_sessions()`）：游戏退出后（正常退出、崩溃、被结束都会出现）Wine 的 `winedevice.exe` 有时不退出，gamescope 要等它启动的进程全部退出才关闭，于是 gamescope 窗口和启动器一直留着，还占显存。Sleepy Launcher 的「结束游戏进程」只 `pkill ZenlessZoneZero`，对这种情况没用。一条龙在启动游戏前（只清理启动超过 1 分钟的会话）和 `close_game` 之后，找出命令行里启动了游戏、但下面已经没有游戏进程的 gamescope，强制结束它下面除 gamescope 以外的进程，gamescope 和启动器随后自己退出。手动清理：`pkill -9 -f winedevice.exe`（只在游戏没在运行时用）。
 
 ### 3.3. 截图
 
@@ -157,7 +158,7 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 ## 5. 未验证 / 已知限制
 
 - **登录**：没有在真正的登录页验证输入账号密码和进入游戏（不能退出游戏）。
-- **关闭游戏**（`close_game`，向游戏进程发 SIGTERM）、关机 / 休眠 / 睡眠：只检查过拼出的命令，没有实际执行。
+- **关闭游戏**（`close_game`，向游戏进程发 SIGTERM，再清理残留会话）、关机 / 休眠 / 睡眠：只检查过拼出的命令，没有实际执行。残留会话清理只用模拟的会话测过。
 - **游戏重启后重新连接**：只模拟过。
 - 小键盘按键（`numpad_N`）：gamescope 显示上 NumLock 是关的，游戏可能把它们当成方向键等，未验证。
 - 依赖手柄的功能（手柄模式战斗助手、手柄灵敏度校准）不可用。

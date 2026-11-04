@@ -14,7 +14,10 @@ from zzz_od.context.zzz_context import ZContext
 from zzz_od.operation.enter_game.auto_hdr import DisableAutoHDR, EnableAutoHDR
 
 if sys.platform != 'win32':
-    from one_dragon.base.controller.gamescope_display import find_game_pids
+    from one_dragon.base.controller.gamescope_display import (
+        find_game_pids,
+        kill_dead_game_sessions,
+    )
 
 # Linux 下通过 Sleepy Launcher (flatpak) 启动游戏 游戏运行在 gamescope 里
 # --just-run-game: 与 --run-game 相同 但只有预下载可用时也直接启动游戏 (需要真正更新时仍会打开启动器窗口)
@@ -78,6 +81,10 @@ class OpenGame(Operation):
         if len(find_game_pids()) > 0:
             log.info('游戏进程已存在 不重复启动 直接等待游戏窗口')
             return self.round_success()
+
+        # 之前游戏崩溃或退出后 残留的 gamescope 会话会一直占着窗口和显存 先清理掉
+        # 只清理启动超过 1 分钟的 避免误伤刚由启动器打开、游戏进程还没出现的会话
+        kill_dead_game_sessions(min_age_seconds=60)
 
         log.info('尝试自动启动游戏 命令行指令 %s', ' '.join(LINUX_LAUNCH_COMMAND))
         # flatpak 会把环境变量传进沙盒 以下变量会让启动失败 需要去掉:

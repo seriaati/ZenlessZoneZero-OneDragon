@@ -14,7 +14,10 @@ import signal
 import time
 from typing import TYPE_CHECKING
 
-from one_dragon.base.controller.gamescope_display import find_game_pids
+from one_dragon.base.controller.gamescope_display import (
+    find_game_pids,
+    kill_dead_game_sessions,
+)
 from one_dragon.base.controller.pc_button.xtest_keyboard_mouse_controller import (
     TAP_HOLD_SECONDS,
     XTestKeyboardMouseController,
@@ -55,9 +58,10 @@ class PcControllerLinux(PcControllerBase):
         )
 
     def close_game(self) -> None:
-        """结束游戏进程 gamescope 会随游戏一起退出"""
+        """结束游戏进程 再清理残留的 Wine 进程 让 gamescope 和启动器退出"""
         pids = find_game_pids()
         if len(pids) == 0:
+            kill_dead_game_sessions()
             return
         for pid in pids:
             try:
@@ -66,6 +70,12 @@ class PcControllerLinux(PcControllerBase):
                 log.error(f'关闭游戏失败 pid={pid}', exc_info=True)
                 return
         self.game_win.gamescope.reset()
+        # 等游戏进程退出 (最多 10 秒) 之后残留的 winedevice.exe 等进程会让 gamescope 一直不关
+        for _ in range(20):
+            if len(find_game_pids()) == 0:
+                break
+            time.sleep(0.5)
+        kill_dead_game_sessions()
         log.info('关闭游戏成功')
 
     def enable_foreground_mode(self) -> None:

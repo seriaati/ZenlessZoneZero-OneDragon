@@ -16,6 +16,7 @@ import contextlib
 import fcntl
 import os
 import re
+import signal
 import socket
 import threading
 from pathlib import Path
@@ -61,6 +62,82 @@ def find_game_pids() -> list[int]:
             pids.append(int(proc_dir.name))
     pids.sort(reverse=True)
     return pids
+
+
+def kill_dead_game_sessions(min_age_seconds: float = 0) -> int:
+    """清理游戏已经退出、但没有关掉的 gamescope 会话。
+
+    游戏退出后 (正常退出 / 崩溃 / 被结束) Wine 的 winedevice.exe 有时不会退出,
+    gamescope 要等它启动的进程全部退出才会关闭, 于是 gamescope 和启动器会一直留着。
+    每留一个都多一个全屏 gamescope 窗口, 还占显存和 CPU。
+    Sleepy Launcher 的"结束游戏进程"只会 pkill 游戏本身, 对这种情况没用。
+
+    做法: 找到命令行里启动了游戏 exe 的 gamescope 进程, 如果它下面已经没有游戏进程,
+    就强制结束它下面除 gamescope 自身以外的进程 (即残留的 Wine 进程), gamescope 和启动器随后会自己退出。
+
+    Args:
+        min_age_seconds: 只清理启动超过这么久的会话。启动游戏前清理时用,
+            避免把刚启动、游戏进程还没出现的会话当成残留
+
+    Returns:
+        清理的会话数量
+    """
+    procs: dict[int, tuple[int, list[str], float]] = {}  # pid -> (父进程号, 命令行参数, 启动时间 秒)
+    clock_ticks = os.sysconf('SC_CLK_TCK')
+    for proc_dir in Path('/proc').iterdir():
+        if not proc_dir.name.isdigit():
+            continue
+        try:
+            argv = [
+                a.decode('utf-8', errors='ignore')
+                for a in (proc_dir / 'cmdline').read_bytes().split(b'\0') if a
+            ]
+            # 进程名可能带空格和括号 从最后一个 ')' 后面开始取字段
+            stat_fields = (proc_dir / 'stat').read_text().rsplit(')', 1)[1].split()
+        except OSError:
+            continue
+        if not argv:
+            continue
+        procs[int(proc_dir.name)] = (int(stat_fields[1]), argv, int(stat_fields[19]) / clock_ticks)
+
+    children: dict[int, list[int]] = {}
+    for pid, (ppid, _, _) in procs.items():
+        children.setdefault(ppid, []).append(pid)
+
+    def exe_name(arg: str) -> str:
+        return re.split(r'[\\/]', arg)[-1].lower()
+
+    uptime = float(Path('/proc/uptime').read_text().split()[0])
+    killed_sessions = 0
+    for pid, (_, argv, start_time) in procs.items():
+        name = exe_name(argv[0])
+        if not name.startswith('gamescope') or name == 'gamescopereaper':
+            continue
+        if GAME_EXE_NAME not in [exe_name(a) for a in argv[1:]]:
+            continue
+        if uptime - start_time < min_age_seconds:
+            continue
+
+        descendants: list[int] = []
+        stack = list(children.get(pid, []))
+        while stack:
+            child = stack.pop()
+            descendants.append(child)
+            stack.extend(children.get(child, []))
+
+        if any(exe_name(procs[d][1][0]) == GAME_EXE_NAME for d in descendants):
+            continue  # 游戏还在运行
+
+        leftovers = [d for d in descendants if not exe_name(procs[d][1][0]).startswith('gamescope')]
+        if not leftovers:
+            continue
+        for d in leftovers:
+            with contextlib.suppress(OSError):
+                os.kill(d, signal.SIGKILL)
+        log.info(f'已清理残留的游戏会话 gamescope pid={pid} 结束进程 {leftovers}')
+        killed_sessions += 1
+
+    return killed_sessions
 
 
 def get_process_display(pid: int) -> str | None:
