@@ -15,7 +15,10 @@ from cv2.typing import MatLike
 from Xlib import X, display
 from Xlib.protocol import rq
 
-from one_dragon.base.controller.gamescope_display import X_ERRORS
+from one_dragon.base.controller.gamescope_display import (
+    X_ERRORS,
+    is_gamescope_wsi_enabled,
+)
 from one_dragon.base.controller.pc_game_window_linux import PcGameWindowLinux
 from one_dragon.base.controller.pc_screenshot.screencapper_base import ScreencapperBase
 from one_dragon.base.geometry.rectangle import Rect
@@ -160,13 +163,15 @@ class XShmScreencapper(ScreencapperBase):
             independent: 是否独立截图
 
         Returns:
-            RGB 截图 失败返回 None
+            RGB 截图 失败返回 None (游戏开着 gamescope 的 WSI 层时 X 截图是黑屏 也返回 None)
         """
         with self._lock:
             gamescope = self.game_win.gamescope
             win = gamescope.get_window()
             d = gamescope.display
             if win is None or d is None:
+                return None
+            if is_gamescope_wsi_enabled(gamescope.game_pid):
                 return None
 
             width, height = rect.width, rect.height

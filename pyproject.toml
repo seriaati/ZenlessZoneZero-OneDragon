@@ -28,6 +28,8 @@ dependencies = [
     "python-xlib==0.33; sys_platform == 'linux'",
     # Linux 下全局快捷键直接读取 /dev/input（Wayland 下 pynput 收不到全局按键）
     "evdev==1.9.3; sys_platform == 'linux'",
+    # Linux 下用 GStreamer 读取 gamescope 的 PipeWire 画面流截图（需要系统装 libgirepository-2.0-dev 等，见 docs/develop/setup/linux.md）
+    "PyGObject==3.58.1; sys_platform == 'linux'",
     "websocket-client==1.9.2",
 ]
 

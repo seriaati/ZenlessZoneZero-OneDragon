@@ -901,6 +901,12 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/65/ff/cdae0a8c2118a0de74b6cf4cbcdcaf8fd25857e6c3f205ce4b1794b27814/PyAutoGUI-0.9.54.tar.gz", hash = "sha256:dd1d29e8fd118941cb193f74df57e5c6ff8e9253b99c7b04f39cfc69f3ae04b2", size = 61236, upload-time = "2023-05-24T20:11:32.972Z" }
 
 [[package]]
+name = "pycairo"
+version = "1.29.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/5e/19ab2572981a996ce96b853a189d2dcced40506b67d9555a7568457abcf2/pycairo-1.29.2.tar.gz", hash = "sha256:3e69fff74fe64f5ba2dfa31f67c6bdf26413342574047437d2ac520d35e9a489", size = 666308, upload-time = "2026-10-04T19:11:03.81Z" }
+
+[[package]]
 name = "pyclipper"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1008,6 +1014,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176", size = 1231151, upload-time = "2026-03-29T13:29:30.038Z" },
 ]
+
+[[package]]
+name = "pygobject"
+version = "3.58.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pycairo" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/65/1e/d590f82e14db75945b03f6b63e0f19662e0340babd8f574fdb1bb5a015e2/pygobject-3.58.1.tar.gz", hash = "sha256:4c80598ade17fbaa7798e01a25d0bf29ce109740786026a074c5c62bb3e79d23", size = 1408671, upload-time = "2026-10-09T11:29:48.929Z" }
 
 [[package]]
 name = "pyinstaller"
@@ -1733,6 +1748,7 @@ dependencies = [
     { name = "pyautogui" },
     { name = "pyclipper" },
     { name = "pygit2" },
+    { name = "pygobject", marker = "sys_platform != 'win32'" },
     { name = "pynput" },
     { name = "pyside6" },
     { name = "pyside6-fluent-widgets" },
@@ -1776,6 +1792,7 @@ requires-dist = [
     { name = "pyautogui", specifier = "==0.9.54" },
     { name = "pyclipper", specifier = "==1.4.0" },
     { name = "pygit2", specifier = "==1.19.3" },
+    { name = "pygobject", marker = "sys_platform == 'linux'", specifier = "==3.58.1" },
     { name = "pynput", specifier = "==1.8.1" },
     { name = "pyside6", specifier = "==6.11.1" },
     { name = "pyside6-fluent-widgets", specifier = "==1.11.2" },

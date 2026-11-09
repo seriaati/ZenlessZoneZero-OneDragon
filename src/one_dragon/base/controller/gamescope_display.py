@@ -164,6 +164,27 @@ def kill_dead_game_sessions(min_age_seconds: float = 0) -> int:
     return killed_sessions
 
 
+def get_process_env(pid: int, name: str) -> str | None:
+    """读取进程的某个环境变量。
+
+    Args:
+        pid: 进程号
+        name: 环境变量名
+
+    Returns:
+        环境变量的值 没有这个变量或读取失败时返回 None
+    """
+    try:
+        environ = Path(f'/proc/{pid}/environ').read_bytes()
+    except OSError:
+        return None
+    prefix = f'{name}='.encode()
+    for item in environ.split(b'\0'):
+        if item.startswith(prefix):
+            return item[len(prefix):].decode('utf-8', errors='ignore')
+    return None
+
+
 def get_process_display(pid: int) -> str | None:
     """读取进程环境变量中的 DISPLAY。
 
@@ -173,15 +194,23 @@ def get_process_display(pid: int) -> str | None:
     Returns:
         DISPLAY 的值 读取失败时返回 None
     """
-    try:
-        environ = Path(f'/proc/{pid}/environ').read_bytes()
-    except OSError:
-        return None
-    for item in environ.split(b'\0'):
-        if item.startswith(b'DISPLAY='):
-            value = item[len(b'DISPLAY='):].decode('utf-8', errors='ignore')
-            return value or None
-    return None
+    return get_process_env(pid, 'DISPLAY') or None
+
+
+def is_gamescope_wsi_enabled(pid: int) -> bool:
+    """游戏是否开着 gamescope 的 WSI 层 (Vulkan 层 游戏画面直接交给 gamescope)。
+
+    gamescope 默认开着 WSI 层。用环境变量 ENABLE_GAMESCOPE_WSI=0 关掉后,
+    游戏改为通过 gamescope 里的 Xwayland 显示画面, 这时 X 截图正常, 但在 NVIDIA 上 3D 场景会严重卡顿。
+    开着 WSI 层时 X 截图是黑屏, 只能从 gamescope 的 PipeWire 画面流截图。
+
+    Args:
+        pid: 游戏进程号
+
+    Returns:
+        是否开着 WSI 层
+    """
+    return get_process_env(pid, 'ENABLE_GAMESCOPE_WSI') != '0'
 
 
 def open_display(display_name: str, pid: int | None = None) -> display.Display:

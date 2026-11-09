@@ -22,16 +22,17 @@ if sys.platform != 'win32':
     )
     from one_dragon.utils.game_audio_linux import GAME_SINK_NAME, ensure_game_sink
 
-# Linux 下通过 Sleepy Launcher (flatpak) 启动游戏 游戏必须运行在 gamescope 里 (一条龙的截图和输入都发到 gamescope 的显示上)
-# 玩家自己玩时可能关掉了启动器里的 gamescope (gamescope 里鼠标转视角会卡顿)
+# Linux 下通过 Sleepy Launcher (flatpak) 启动游戏 游戏必须运行在 gamescope 里 (一条龙的截图和输入都发到 gamescope 上)
+# 玩家自己玩时可能关掉了启动器里的 gamescope
 # 所以一条龙不用玩家的启动器设置: 复制一份启动器配置 打开 gamescope 后放到单独的目录 用环境变量 LAUNCHER_FOLDER 让启动器读这份配置
 # 配置里的游戏 / Wine 前缀 / 运行器等都是绝对路径 复制的配置仍然使用同一个游戏 玩家的设置不会被改动
 SLEEPY_LAUNCHER_DATA_DIR: Path = Path.home() / '.var/app/moe.launcher.sleepy-launcher/data'
 SLEEPY_LAUNCHER_FOLDER: Path = SLEEPY_LAUNCHER_DATA_DIR / 'sleepy-launcher'
 ONE_DRAGON_LAUNCHER_FOLDER: Path = SLEEPY_LAUNCHER_DATA_DIR / 'sleepy-launcher-onedragon'
 # --just-run-game: 与 --run-game 相同 但只有预下载可用时也直接启动游戏 (需要真正更新时仍会打开启动器窗口)
+# --filesystem=xdg-run/pipewire-0: 让沙盒里的 gamescope 能连上 PipeWire 发布画面流 一条龙从画面流截图
 LINUX_LAUNCH_COMMAND: list[str] = [
-    'flatpak', 'run', f'--env=LAUNCHER_FOLDER={ONE_DRAGON_LAUNCHER_FOLDER}',
+    'flatpak', 'run', f'--env=LAUNCHER_FOLDER={ONE_DRAGON_LAUNCHER_FOLDER}', '--filesystem=xdg-run/pipewire-0',
     'moe.launcher.sleepy-launcher', '--just-run-game',
 ]
 
@@ -46,9 +47,10 @@ def write_gamescope_launcher_config() -> bool:
     try:
         config = json.loads(config_path.read_text(encoding='utf-8'))
         game = config['game']
-        game['enhancements']['gamescope']['enabled'] = True
-        # gamescope 的 WSI 层开着时 X 截图是黑屏
-        game['environment']['ENABLE_GAMESCOPE_WSI'] = '0'
+        gamescope = game['enhancements']['gamescope']
+        gamescope['enabled'] = True
+        # 关掉 gamescope 的 WSI 层 (ENABLE_GAMESCOPE_WSI=0) 会让 3D 场景严重卡顿 保持默认的开着 截图走 PipeWire 画面流
+        game['environment'].pop('ENABLE_GAMESCOPE_WSI', None)
         # 游戏声音输出到静音用的虚拟输出 玩家听不到 声音闪避仍能录到 (见 game_audio_linux)
         # 虚拟输出创建失败时不设置 游戏正常发声
         if ensure_game_sink():

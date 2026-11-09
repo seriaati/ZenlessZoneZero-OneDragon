@@ -1,7 +1,7 @@
 """Linux 下的 PC 控制器 游戏运行在 gamescope 里。
 
 - 窗口: 在 gamescope 的 X 显示上查找游戏窗口
-- 截图: X 共享内存 (MIT-SHM)
+- 截图: gamescope 的 PipeWire 画面流 (游戏关着 gamescope 的 WSI 层时用 X 共享内存)
 - 输入: XTest 只发到游戏所在的显示 不影响宿主桌面
 
 因为输入本身就不影响桌面 前台模式和后台模式都使用同一套 XTest 输入 不使用虚拟手柄。

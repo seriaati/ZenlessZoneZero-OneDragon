@@ -4,7 +4,7 @@
 > Windows 的环境搭建见 [快速开始](quickstart.md)，本文只写 Linux 不同的地方。
 
 **适用范围**：这是个人移植，只在一台机器上验证过（Ubuntu 26.04、KDE Plasma 6.6 Wayland、单个 1920x1080 显示器、NVIDIA RTX 4060）。
-游戏必须运行在 **gamescope** 里，所有截图和键鼠输入都发到 gamescope 自己的 X 显示，不经过宿主桌面。
+游戏必须运行在 **gamescope** 里。截图从 gamescope 发布的 PipeWire 画面流读取，键鼠输入发到 gamescope 自己的 X 显示，都不经过宿主桌面。
 不支持不带 gamescope 直接运行游戏，也不支持虚拟手柄。
 
 ## 1. 环境要求
@@ -18,9 +18,16 @@
   flatpak install org.freedesktop.Platform.VulkanLayer.gamescope//25.08
   ```
 
+- 允许 Sleepy Launcher 的沙盒访问 PipeWire（gamescope 要靠它发布画面流，一条龙从画面流截图）：
+
+  ```shell
+  flatpak override --user --filesystem=xdg-run/pipewire-0 moe.launcher.sleepy-launcher
+  ```
+
+  一条龙自己启动游戏时会临时加上这个权限；自己从启动器启动游戏、再用一条龙（例如剧情里的战斗开自动战斗）时需要上面这条设置。没有这个权限时日志会报「找不到 gamescope 的 PipeWire 画面流」，游戏的 `game.log` 里有 `pw_context_connect failed`。
 - Sleepy Launcher 设置里：gamescope 的分辨率设置（gamescope 窗口和游戏都用 1920x1080，项目的坐标都基于 1080p）。gamescope 开关本身不用打开，一条龙启动游戏时会自己打开（见 [2. 安装和启动](#2-安装和启动)）。
-  - 自己玩时建议关掉 gamescope：gamescope 里用鼠标转视角会严重卡顿（FSR、gamemode、强制捕获光标、自适应同步都试过，无关，只跟 gamescope 开关有关）。
-  - 一条龙只控制运行在 gamescope 里的游戏。自己开着游戏（没有 gamescope）时运行一条龙，会提示先关闭游戏。
+  - 一条龙只控制运行在 gamescope 里的游戏。自己开着游戏（没有 gamescope）时运行一条龙，会提示先关闭游戏。想在自己玩的时候用一条龙，就在启动器里打开 gamescope。
+  - **不要设置环境变量 `ENABLE_GAMESCOPE_WSI=0`**。它关掉 gamescope 的 WSI 层，游戏改为通过 gamescope 里的 Xwayland 显示画面，在 NVIDIA 上 3D 场景（大世界、战斗）会严重卡顿，菜单正常。开着 WSI 层（默认）时 gamescope 里玩起来是流畅的。
 - 游戏内设置：
   - 文本语言用 **简体中文** 或 **English**。项目的文字识别按这两种语言准备，繁体中文下很多画面认不出来。
   - 想用声音闪避时，游戏的 **主音量必须大于 0**。声音是从系统的声音输出的监听口（monitor）录的，游戏静音时录到的就是一片静音。系统音量或系统静音不影响。
@@ -37,6 +44,7 @@
 - NVIDIA 显卡：只需要显卡驱动。CUDA / cuDNN 运行库由 pip 包 `onnxruntime-gpu[cuda,cudnn]` 带上，不需要装系统 CUDA。
 - `uv`：见 [快速开始](quickstart.md) 第 2 步（Linux 用 `curl -LsSf https://astral.sh/uv/install.sh | sh`）。
 - `evdev` 依赖没有预编译包，`uv sync` 时会本地编译，需要 C 编译器和内核头文件（Ubuntu：`sudo apt install build-essential linux-libc-dev`）。
+- `PyGObject`（用 GStreamer 读取画面流）也要本地编译，并且需要 GStreamer 的 PipeWire 插件和 GstApp 的类型库（Ubuntu：`sudo apt install libgirepository-2.0-dev libcairo2-dev gir1.2-gst-plugins-base-1.0 gstreamer1.0-pipewire`）。
 
 ## 2. 安装和启动
 
@@ -51,7 +59,7 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
   - 终端：`ln -s "$PWD/deploy/linux/zzz-od" ~/bin/zzz-od`（`~/bin` 需要在 `PATH` 里），之后直接运行 `zzz-od`。
   - 应用菜单：在 `~/.local/share/applications/` 新建 `.desktop` 文件，`Exec=` 写这个脚本（或上面软链接）的绝对路径。图标可以用 `assets/ui/logo.ico` 转成的 png。
 - 一条龙会通过 `flatpak run moe.launcher.sleepy-launcher --just-run-game` 自动启动游戏，并等待最多约 3 分钟，直到找到游戏窗口。游戏已经在运行时不会重复启动。
-  - 一条龙不用玩家的启动器设置启动：每次启动前把 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher/config.json` 复制到 `.../data/sleepy-launcher-onedragon/config.json`，把 gamescope 打开、加上环境变量 `ENABLE_GAMESCOPE_WSI=0`（不加的话从 X 截到的画面是全黑的），再用 `flatpak run --env=LAUNCHER_FOLDER=<这个目录> ...` 让启动器读这份配置。配置里的游戏、Wine 前缀、运行器都是绝对路径，所以用的还是同一个游戏；玩家自己的设置不会被改动，启动器退出时写回的配置也只写到这个目录。这次启动的启动器日志 `game.log` / `debug.log` 也在这个目录。
+  - 一条龙不用玩家的启动器设置启动：每次启动前把 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher/config.json` 复制到 `.../data/sleepy-launcher-onedragon/config.json`，把 gamescope 打开、去掉环境变量 `ENABLE_GAMESCOPE_WSI`（见上面 1.1），再用 `flatpak run --env=LAUNCHER_FOLDER=<这个目录> --filesystem=xdg-run/pipewire-0 ...` 让启动器读这份配置，并让 gamescope 能发布画面流。配置里的游戏、Wine 前缀、运行器都是绝对路径，所以用的还是同一个游戏；玩家自己的设置不会被改动，启动器退出时写回的配置也只写到这个目录。这次启动的启动器日志 `game.log` / `debug.log` 也在这个目录。
   - `--just-run-game` 与 `--run-game` 相同，区别是只有预下载可用时也会直接启动游戏。游戏需要真正更新时，Sleepy Launcher 会打开自己的窗口，需要手动处理。
   - 启动前会去掉 `SSL_CERT_FILE`、`SSL_CERT_DIR` 和 `NoDefaultCurrentDirectoryInExePath` 这几个环境变量。flatpak 会把环境变量带进沙盒：前两个指向宿主机的证书路径，沙盒里没有，Sleepy Launcher 读不到证书会直接崩溃；第三个是 Windows 变量，Wine 也认，设置后找不到游戏 exe。
   - Sleepy Launcher 的输出写在 `.log/sleepy_launcher.log`，启动失败时先看这里；游戏的 Wine 输出在 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher-onedragon/game.log`（一条龙启动时；自己从启动器启动时在 `.../sleepy-launcher/game.log`）。
@@ -84,8 +92,9 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 |---|---|
 | `src/one_dragon/base/controller/gamescope_display.py` | 找到游戏进程、它所在的 X 显示和游戏窗口，建立 X 连接 |
 | `src/one_dragon/base/controller/pc_game_window_linux.py` | 游戏窗口（位置、是否有效），接口与 Windows 的 `PcGameWindow` 相同 |
-| `src/one_dragon/base/controller/pc_screenshot/xshm_screencapper.py` | 用 X 共享内存（MIT-SHM）截图 |
-| `src/one_dragon/base/controller/pc_screenshot/pc_screenshot_controller_linux.py` | 截图控制器，只有一种截图方法 `xshm` |
+| `src/one_dragon/base/controller/pc_screenshot/pipewire_screencapper.py` | 从 gamescope 的 PipeWire 画面流截图（默认） |
+| `src/one_dragon/base/controller/pc_screenshot/xshm_screencapper.py` | 用 X 共享内存（MIT-SHM）截图（只在游戏设置了 `ENABLE_GAMESCOPE_WSI=0` 时用） |
+| `src/one_dragon/base/controller/pc_screenshot/pc_screenshot_controller_linux.py` | 截图控制器，按游戏是否开着 WSI 层自动选 `pipewire` 或 `xshm` |
 | `src/one_dragon/base/controller/pc_button/xtest_keyboard_mouse_controller.py` | 用 XTest 发键鼠输入，按键名与 Windows 相同 |
 | `src/one_dragon/base/controller/pc_controller_linux.py` | Linux 控制器 `PcControllerLinux`，`ZPcController` 在 Linux 下继承它 |
 | `src/one_dragon/base/controller/pc_button/evdev_button_listener.py` | 全局快捷键：读取 `/dev/input` 的键盘鼠标 |
@@ -101,10 +110,22 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 
 ### 3.3. 截图
 
-- 直接对游戏窗口做 `ShmGetImage`，再转成 RGB（与 Windows 截图结果的颜色顺序相同）。
-- 一次完整截图约 2.5 ms。
+- 读取游戏进程的环境变量 `ENABLE_GAMESCOPE_WSI` 决定截图方法：不是 `0`（默认）时用 PipeWire 画面流，是 `0` 时用 X 共享内存。开着 WSI 层时游戏画面不经过 X 窗口，X 截图是全黑的。
+- 设置里的「截图方法」在 Linux 下隐藏，不生效。
+
+**PipeWire 画面流（默认）**
+
+- gamescope 把合成后的整个画面发布成一个 PipeWire 视频源（`media.class` 是 `Video/Source`，节点名以 `gamescope` 开头，Steam 录像用的就是它）。第一次截图时用 `pw-dump` 找到这个节点，用 GStreamer（`pipewiresrc ! appsink`）连接，之后一直接收，只保留最新一帧。
+- WirePlumber 自动连接时要求客户端带 `media.type` 等属性，不带时报 `target not found`（WirePlumber 日志里是 `attempt to concatenate a nil value (field 'media.type')`），所以连接时设置了 `stream-properties`。
+- `pipewiresrc` 要设 `always-copy=true`：不设时它一直占着 gamescope 的缓冲区，gamescope 每秒报几十次 `pipewire: warning: out of buffers`，几个小时就能把 Sleepy Launcher 的 `game.log`（上限约 8 MiB）写满，游戏崩溃时真正的报错就记录不下来了。设了以后每帧多一次复制。
+- 实测：画面流约 125 帧/秒（间隔约 8 ms），截图取最新一帧，中位数约 0.2 ms；接收画面流时 gamescope 多占约 10% 的单核 CPU。
+- 截到的是 gamescope 的输出画面，大小与游戏窗口不同时缩放到游戏窗口大小。
+- 游戏重启或画面流出错（例如 gamescope 退出）时重新连接。
+
+**X 共享内存（`ENABLE_GAMESCOPE_WSI=0` 时）**
+
+- 直接对游戏窗口做 `ShmGetImage`，再转成 RGB（与 Windows 截图结果的颜色顺序相同）。一次完整截图约 2.5 ms。
 - 要求游戏进程和一条龙在同一个 IPC 命名空间（Sleepy Launcher 的 flatpak 配置了 `shared=ipc`，满足）。
-- 设置里的「截图方法」在 Linux 下隐藏，所有选项都对应 `xshm`。
 
 ### 3.4. 键鼠输入
 
@@ -160,6 +181,7 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
 - 自动战斗（训练场，模板「全配队通用」）：闪光识别后约 10–20 ms 闪避；声音识别比画面识别晚约 200 ms。
 - 全局快捷键：用临时的虚拟键盘按 F9，`PcButtonListener`、`ZContext` 的按键事件和开发工具快捷键都能收到。
 - 游戏已运行时，「打开游戏」直接进入等待窗口，不会重复启动。
+- PipeWire 画面流截图（WSI 层开着）：标题画面截图正确；点击设置按钮、按 Esc 关闭都生效。自动战斗还没有在 PipeWire 截图下重新跑过。
 
 ## 5. 未验证 / 已知限制
 
