@@ -49,6 +49,9 @@ def write_gamescope_launcher_config() -> bool:
         game = config['game']
         gamescope = game['enhancements']['gamescope']
         gamescope['enabled'] = True
+        # 无人值守运行 (如开机后的定时任务) 时设置 ONE_DRAGON_GAMESCOPE_HEADLESS=1 gamescope 不开窗口 截图和输入不受影响
+        if os.environ.get('ONE_DRAGON_GAMESCOPE_HEADLESS') == '1':
+            gamescope['extra_args'] = f"{gamescope.get('extra_args', '')} --backend headless".strip()
         # 关掉 gamescope 的 WSI 层 (ENABLE_GAMESCOPE_WSI=0) 会让 3D 场景严重卡顿 保持默认的开着 截图走 PipeWire 画面流
         game['environment'].pop('ENABLE_GAMESCOPE_WSI', None)
         # 游戏声音输出到静音用的虚拟输出 玩家听不到 声音闪避仍能录到 (见 game_audio_linux)

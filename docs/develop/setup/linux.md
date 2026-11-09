@@ -60,6 +60,7 @@ PYTHONPATH=src uv run src/zzz_od/gui/app.py
   - 应用菜单：在 `~/.local/share/applications/` 新建 `.desktop` 文件，`Exec=` 写这个脚本（或上面软链接）的绝对路径。图标可以用 `assets/ui/logo.ico` 转成的 png。
 - 一条龙会通过 `flatpak run moe.launcher.sleepy-launcher --just-run-game` 自动启动游戏，并等待最多约 3 分钟，直到找到游戏窗口。游戏已经在运行时不会重复启动。
   - 一条龙不用玩家的启动器设置启动：每次启动前把 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher/config.json` 复制到 `.../data/sleepy-launcher-onedragon/config.json`，把 gamescope 打开、去掉环境变量 `ENABLE_GAMESCOPE_WSI`（见上面 1.1），再用 `flatpak run --env=LAUNCHER_FOLDER=<这个目录> --filesystem=xdg-run/pipewire-0 ...` 让启动器读这份配置，并让 gamescope 能发布画面流。配置里的游戏、Wine 前缀、运行器都是绝对路径，所以用的还是同一个游戏；玩家自己的设置不会被改动，启动器退出时写回的配置也只写到这个目录。这次启动的启动器日志 `game.log` / `debug.log` 也在这个目录。
+  - 设置环境变量 `ONE_DRAGON_GAMESCOPE_HEADLESS=1` 时，这份配置里还会给 gamescope 加上 `--backend headless`：gamescope 不在桌面上开窗口，截图（PipeWire 画面流）和输入（XTest）照常工作，适合定时任务等无人值守运行。看不到游戏画面，出问题只能看日志和截图。
   - `--just-run-game` 与 `--run-game` 相同，区别是只有预下载可用时也会直接启动游戏。游戏需要真正更新时，Sleepy Launcher 会打开自己的窗口，需要手动处理。
   - 启动前会去掉 `SSL_CERT_FILE`、`SSL_CERT_DIR` 和 `NoDefaultCurrentDirectoryInExePath` 这几个环境变量。flatpak 会把环境变量带进沙盒：前两个指向宿主机的证书路径，沙盒里没有，Sleepy Launcher 读不到证书会直接崩溃；第三个是 Windows 变量，Wine 也认，设置后找不到游戏 exe。
   - Sleepy Launcher 的输出写在 `.log/sleepy_launcher.log`，启动失败时先看这里；游戏的 Wine 输出在 `~/.var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher-onedragon/game.log`（一条龙启动时；自己从启动器启动时在 `.../sleepy-launcher/game.log`）。
