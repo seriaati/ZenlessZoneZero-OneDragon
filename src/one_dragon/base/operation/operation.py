@@ -696,6 +696,8 @@ class Operation(OperationBase):
             result: 最终操作结果。
         """
         self.ctx.unlisten_all_event(self)
+        # 暂停/恢复回调注册在 run_context.event_bus 上 不解除的话 每个执行过的指令连同最后一张截图都无法释放
+        self.ctx.run_context.event_bus.unlisten_all_event(self)
         if result.success:
             log.info('%s 执行成功 返回状态 %s', self.display_name, coalesce_gt(result.status, '成功', model='ui'))
         else:
